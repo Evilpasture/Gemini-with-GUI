@@ -12,7 +12,7 @@ Chat history reset functionality
 
 Environment-based configuration
 
-Setup
+# Setup
 
 Install dependencies:
 pip install -r requirements.txt

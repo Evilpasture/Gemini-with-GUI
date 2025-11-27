@@ -2,10 +2,12 @@ import tkinter as tk
 import sys
 import os
 import threading
+import configparser
 from tkinter import ttk
 from tkinter import messagebox
 from google import genai
 from google.genai.errors import APIError
+from google.genai import types
 from dotenv import load_dotenv
 
 
@@ -13,9 +15,23 @@ load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Configuration
-MODEL_NAME = "gemini-2.5-flash"
-STANDARD_FONT = ("Arial", 12)
-INSTRUCTION = "Keep responses concise and chat-length."
+CONFIG_FILE = "config.ini"
+config = configparser.ConfigParser()
+config.read(CONFIG_FILE)
+
+settings_section = "SETTINGS"
+
+# Strings (using .get())
+MODEL_NAME = config.get(settings_section, 'MODEL_NAME', fallback='gemini-2.5-flash')
+INSTRUCTION = config.get(settings_section, 'INSTRUCTION', fallback='Default instructions.')
+FONT_NAME = config.get(settings_section, 'STANDARD_FONT_NAME', fallback='Arial')
+
+# Integers (using .getint())
+FONT_SIZE = config.getint(settings_section, 'STANDARD_FONT_SIZE', fallback=10)
+TEMPERATURE = config.getfloat(settings_section, 'TEMPERATURE', fallback=0.5)
+
+STANDARD_FONT = (FONT_NAME, FONT_SIZE)
+
 
 
 class GUI:
@@ -153,9 +169,13 @@ class ChatManager:
         self.client = client
         self.gui = gui_ref
         try:
+            self.chat_config = types.GenerateContentConfig(
+                system_instruction=INSTRUCTION,
+                temperature=TEMPERATURE
+            )
             self.chat = self.client.chats.create(
                 model=MODEL_NAME,
-                config={'system_instruction': INSTRUCTION}
+                config=self.chat_config
             )
         except Exception as e:
             messagebox.showerror("Initialization Error", f"Failed to create chat session: {e}")

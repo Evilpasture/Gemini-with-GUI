@@ -1,0 +1,76 @@
+###########################
+## 1. General Artifacts ##
+###########################
+
+# Dependencies and Build Outputs
+# Ignore downloaded packages (these should be installed via requirements.txt)
+/node_modules
+/target/
+/build/
+/dist/
+*.log
+*.lock
+
+###########################
+## 2. Python Specifics ##
+###########################
+
+# Bytecode and Compiled Files
+# Python's compiled files
+__pycache__/
+*.pyc
+
+# Virtual Environments
+# The most critical exclusion: your isolated environment folder
+venv/
+.venv/
+
+# Environment data
+.Python
+
+# Packaging
+*.egg-info/
+.coverage
+
+###########################
+## 3. IDE / Editor Files ##
+###########################
+
+# PyCharm / IntelliJ
+# Ignore the configuration folder
+.idea/
+
+# Visual Studio Code
+.vscode/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim/Nano
+*~
+*.swp
+
+###########################
+## 4. Sensitive/Secrets ##
+###########################
+
+# Environment Variables
+# Crucial for secrets like API keys
+.env
+.env.local
+
+# Credentials/Keys (often stored separately)
+*.key
+*.pem
+
+###########################
+## 5. OS/Metadata Files ##
+###########################
+
+# macOS
+.DS_Store
+.localized
+
+# Windows
+Thumbs.db

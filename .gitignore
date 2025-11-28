@@ -10,6 +10,7 @@
 /dist/
 *.log
 *.lock
+config.ini
 
 ###########################
 ## 2. Python Specifics ##

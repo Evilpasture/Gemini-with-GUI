@@ -67,7 +67,14 @@ class GUI:
             command=self.controller.show_license
         )
 
+        self.tools_menu = tk.Menu(self.menubar, tearoff=0)
+        self.tools_menu.add_command(
+            label="Options",
+            command=self.show_options
+        )
+
         self.menubar.add_cascade(menu=self.chat_menu, label="Chat")
+        self.menubar.add_cascade(menu=self.tools_menu, label="Tools")
         self.menubar.add_cascade(menu=self.help_menu, label="Help")
 
         self.root.config(menu=self.menubar)
@@ -126,6 +133,22 @@ class GUI:
 
         self.root.protocol("WM_DELETE_WINDOW", self.controller.on_closing)
 
+    def show_options(self):
+        options = tk.Toplevel(self.root)
+        options.title("Options")
+        options.geometry("600x600")
+        notebook = ttk.Notebook(options)
+        notebook.pack(pady=10, padx=10, expand=True, fill='both')
+
+        ai_behaviour = ttk.Frame(notebook, padding="10")
+        notebook.add(ai_behaviour, text="AI")
+        file_management = ttk.Frame(notebook, padding="10")
+        notebook.add(file_management, text="Files")
+
+        loaded_options = Preferences(ai_behaviour, file_management)
+        loaded_options.ai_behavior()
+        loaded_options.file_management()
+
     def handle_submit(self):
         text = self.entry.get()
         if not text.strip():
@@ -162,6 +185,25 @@ class GUI:
         self.button.config(state="normal")
         self.status_label.config(text="Ready")
         self.entry.focus()
+
+
+class Preferences:
+    def __init__(self, ai_behavior, file_management):
+        self.ai_label = ttk.Label(ai_behavior, text="AI")
+        self.ai_label.pack()
+
+        self.file_label = ttk.Label(file_management, text="Files")
+        self.file_label.pack()
+
+    # STUB
+    def ai_behavior(self):
+        pass # supposed to change stuff in the config.ini about the AI (see above constants)
+    def file_management(self):
+        pass # supposed to give the options to save logs, load existing chats from logs
+    def apply_changes(self):
+        # supposed to update above settings in real time
+        self.ai_label.pack_forget()
+        self.file_label.pack_forget()
 
 
 class ChatManager:

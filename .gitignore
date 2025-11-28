@@ -21,7 +21,7 @@ __pycache__/
 *.pyc
 
 # Virtual Environments
-# The most critical exclusion: your isolated environment folder
+# Isolated environment folder
 venv/
 .venv/
 

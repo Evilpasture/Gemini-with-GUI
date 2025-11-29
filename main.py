@@ -26,6 +26,20 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Configuration Defaults
 CONFIG_FILE = "config.ini"
+
+COMMENT_HEADER = """
+        # ---NOTE FOR SAFETY SETTINGS---
+        # I BELIEVE THAT YOU'RE A RESPONSIBLE ADULT
+        # VALUES TO USE: BLOCK_NONE, BLOCK_ONLY_HIGH, BLOCK_MEDIUM_AND_ABOVE, BLOCK_LOW_AND_ABOVE
+        """
+
+threshold_map = {
+    "BLOCK_NONE": types.HarmBlockThreshold.BLOCK_NONE,
+    "BLOCK_ONLY_HIGH": types.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    "BLOCK_MEDIUM_AND_ABOVE": types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    "BLOCK_LOW_AND_ABOVE": types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+}
+
 DEFAULT_CONFIG = {
     'SETTINGS': {
         'MODEL_NAME': 'gemini-2.5-flash',
@@ -35,6 +49,13 @@ DEFAULT_CONFIG = {
         'STANDARD_FONT_NAME': 'Arial',
         'STANDARD_FONT_SIZE': '10',
         'TEMPERATURE': '0.7'
+    },
+    'SAFETY_SETTINGS': {
+        'HARASSMENT_THRESHOLD': 'BLOCK_MEDIUM_AND_ABOVE',
+        'HATE_SPEECH_THRESHOLD': 'BLOCK_MEDIUM_AND_ABOVE',
+        'DANGEROUS_CONTENT_THRESHOLD': 'BLOCK_MEDIUM_AND_ABOVE',
+        'SEXUALLY_EXPLICIT_THRESHOLD': 'BLOCK_MEDIUM_AND_ABOVE',
+        'CIVIC_INTEGRITY_THRESHOLD': 'BLOCK_MEDIUM_AND_ABOVE',
     }
 }
 
@@ -123,6 +144,13 @@ class PreferencesWindow(tk.Toplevel):
         current_instr = self.config.get('SETTINGS', 'INSTRUCTION', fallback='')
         self.txt_instruct.insert("1.0", current_instr)
 
+        # For advanced settings
+        ttk.Button(self.tab_ai, text="Advanced...", command=self.open_advanced).grid(row=6, column=0, sticky="w", pady=5)
+
+    def open_advanced(self):
+        """Creates the new advanced window"""
+        AdvancedSettings(self, self.config)
+
     def build_system_tab(self):
         # Font Size
         ttk.Label(self.tab_files, text="Font Size:").grid(row=0, column=0, sticky="w", pady=5)
@@ -157,6 +185,105 @@ class PreferencesWindow(tk.Toplevel):
 
         # 3. Trigger App Callback
         self.on_save_callback()
+        self.destroy()
+
+class AdvancedSettings(tk.Toplevel):
+    def __init__(self, parent, config):
+        super().__init__(parent)
+        self.config = config
+
+        self.title('Advanced Settings')
+        self.geometry("500x500")
+        self.resizable(False, False)
+
+        self.advanced_frame = ttk.Frame(self, padding="20")
+        self.advanced_frame.pack(fill="both", expand=True)
+        self.advanced_frame.grid_columnconfigure(1, weight=1)
+
+        self.choices = [threshold for threshold in threshold_map]
+
+        # Listing all the filter options
+        tk.Label(self.advanced_frame, text="HARASSMENT_THRESHOLD").grid(row=0, column=0, sticky="w", padx=10, pady=10)
+        self.harassment_threshold = tk.StringVar(
+            value=self.config.get('SAFETY_SETTINGS', 'HARASSMENT_THRESHOLD'))
+        self.harassment_threshold_option = ttk.OptionMenu(
+            self.advanced_frame,
+            self.harassment_threshold,
+            self.harassment_threshold.get(),
+            *self.choices
+        )
+        self.harassment_threshold_option.grid(row=0, column=1, sticky="e", padx=10, pady=10)
+
+        tk.Label(self.advanced_frame, text="HATE_SPEECH_THRESHOLD").grid(row=1, column=0, sticky="w", padx=10, pady=10)
+        self.hate_speech_threshold = tk.StringVar(
+            value=self.config.get('SAFETY_SETTINGS', 'HATE_SPEECH_THRESHOLD'))
+        self.hate_speech_threshold_option = ttk.OptionMenu(
+            self.advanced_frame,
+            self.hate_speech_threshold,
+            self.hate_speech_threshold.get(),
+            *self.choices
+        )
+        self.hate_speech_threshold_option.grid(row=1, column=1, sticky="e", padx=10, pady=10)
+
+        tk.Label(self.advanced_frame, text="DANGEROUS_CONTENT_THRESHOLD").grid(row=2, column=0, sticky="w", padx=10, pady=10)
+        self.dangerous_content_threshold = tk.StringVar(
+            value=self.config.get('SAFETY_SETTINGS', 'DANGEROUS_CONTENT_THRESHOLD'))
+        self.dangerous_content_threshold_option = ttk.OptionMenu(
+            self.advanced_frame,
+            self.dangerous_content_threshold,
+            self.dangerous_content_threshold.get(),
+            *self.choices
+        )
+        self.dangerous_content_threshold_option.grid(row=2, column=1, sticky="e", padx=10, pady=10)
+
+        tk.Label(self.advanced_frame, text="SEXUALLY_EXPLICIT_THRESHOLD").grid(row=3, column=0, sticky="w", padx=10,
+                                                                               pady=10)
+        self.sexually_explicit_threshold = tk.StringVar(
+            value=self.config.get('SAFETY_SETTINGS', 'SEXUALLY_EXPLICIT_THRESHOLD'))
+        self.sexually_explicit_threshold_option = ttk.OptionMenu(
+            self.advanced_frame,
+            self.sexually_explicit_threshold,
+            self.sexually_explicit_threshold.get(),
+            *self.choices
+        )
+        self.sexually_explicit_threshold_option.grid(row=3, column=1, sticky="e", padx=10, pady=10)
+
+        tk.Label(self.advanced_frame, text="CIVIC_INTEGRITY_THRESHOLD").grid(row=4, column=0, sticky="w", padx=10,
+                                                                               pady=10)
+        self.civic_integrity_threshold = tk.StringVar(
+            value=self.config.get('SAFETY_SETTINGS', 'CIVIC_INTEGRITY_THRESHOLD'))
+        self.civic_integrity_threshold_option = ttk.OptionMenu(
+            self.advanced_frame,
+            self.civic_integrity_threshold,
+            self.civic_integrity_threshold.get(),
+            *self.choices
+        )
+        self.civic_integrity_threshold_option.grid(row=4, column=1, sticky="e", padx=10, pady=10)
+
+        # Frame for the buttons in the bottom
+        btn_frame = ttk.Frame(self)
+        btn_frame.pack(side="bottom", fill="x", padx=10, pady=10)
+
+        ttk.Button(btn_frame, text="Apply changes...", command=self.apply_changes).pack(side="right", padx=5)
+        ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side="right")
+        self.grab_set()
+    def apply_changes(self):
+        if not self.config.has_section('SETTINGS'):
+            self.config.add_section('SETTINGS')
+
+        self.config.set('SAFETY_SETTINGS', 'HARASSMENT_THRESHOLD', self.harassment_threshold.get().strip())
+        self.config.set('SAFETY_SETTINGS', 'HATE_SPEECH_THRESHOLD', self.hate_speech_threshold.get().strip())
+        self.config.set('SAFETY_SETTINGS', 'DANGEROUS_CONTENT_THRESHOLD', self.dangerous_content_threshold.get().strip())
+        self.config.set('SAFETY_SETTINGS', 'SEXUALLY_EXPLICIT_THRESHOLD', self.sexually_explicit_threshold.get().strip())
+        self.config.set('SAFETY_SETTINGS', 'CIVIL_INTEGRITY_THRESHOLD', self.civic_integrity_threshold.get().strip())
+
+        try:
+            with open(CONFIG_FILE, 'w') as configfile:
+                self.config.write(configfile)
+        except Exception as e:
+            messagebox.showerror("Save Error", f"Could not save config.ini: {e}")
+            return
+
         self.destroy()
 
 
@@ -303,10 +430,11 @@ class GUI:
 
 
 class ChatManager:
-    def __init__(self, client, gui_ref, settings):
+    def __init__(self, client, gui_ref, settings, safety_settings):
         self.client = client
         self.gui = gui_ref
         self.settings = settings
+        self.safety_settings = safety_settings
         self.persona_config = ""
         self.chat_config = None
         self.chat = None
@@ -318,7 +446,8 @@ class ChatManager:
             self.persona_config = f"At this present, you are talking to {self.settings['user_name']}. "
             self.chat_config = types.GenerateContentConfig(
                 system_instruction=f"{self.settings['instruction']}\n{self.persona_config}",
-                temperature=self.settings['temperature']
+                temperature=self.settings['temperature'],
+                safety_settings=self.safety_settings
             )
             self.chat = self.client.chats.create(
                 model=self.settings['model_name'],
@@ -398,6 +527,7 @@ class App:
     def __init__(self, _root):
         self.root = _root
         self.current_settings = None
+        self.safety_settings = None
         self.config_parser = configparser.ConfigParser()
         self.load_config()
 
@@ -417,7 +547,7 @@ class App:
         self.gui = GUI(self.root, self, self.current_settings)
 
         # Initialize Logic
-        self.chat_manager = ChatManager(self.client, self.gui, self.current_settings)
+        self.chat_manager = ChatManager(self.client, self.gui, settings=self.current_settings, safety_settings=self.safety_settings)
 
     def load_config(self):
         """Loads config.ini or creates it if missing."""
@@ -425,6 +555,7 @@ class App:
             for section, options in DEFAULT_CONFIG.items():
                 self.config_parser[section] = options
             with open(CONFIG_FILE, 'w') as f:
+                f.write(COMMENT_HEADER + '\n\n')
                 self.config_parser.write(f)
         else:
             self.config_parser.read(CONFIG_FILE)
@@ -440,6 +571,21 @@ class App:
             'temperature': self.config_parser.getfloat('SETTINGS', 'TEMPERATURE', fallback=0.5),
         }
 
+        self.safety_settings = [
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold=threshold_map[self.config_parser.get('SAFETY_SETTINGS', 'HARASSMENT_THRESHOLD')],
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold=threshold_map[self.config_parser.get('SAFETY_SETTINGS', 'HATE_SPEECH_THRESHOLD')],
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold=threshold_map[self.config_parser.get('SAFETY_SETTINGS','DANGEROUS_CONTENT_THRESHOLD')],
+            ),
+        ]
+
     def reload_settings(self):
         """Called by PreferencesWindow to apply changes."""
         self.load_config()
@@ -451,7 +597,7 @@ class App:
             "system")
 
         # Re-init Chat Manager with new model/temp
-        self.chat_manager = ChatManager(self.client, self.gui, self.current_settings)
+        self.chat_manager = ChatManager(self.client, self.gui, self.current_settings, self.safety_settings)
 
     def process_input(self, text):
         self.chat_manager.process_input(text)

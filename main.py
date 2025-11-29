@@ -260,6 +260,8 @@ class AdvancedSettings(tk.Toplevel):
         )
         self.civic_integrity_threshold_option.grid(row=4, column=1, sticky="e", padx=10, pady=10)
 
+        tk.Label(self.advanced_frame, text="This adjusts the filters.", font=("Arial", 8, "italic")).grid(row=5, column=0, sticky="es", padx=10)
+
         # Frame for the buttons in the bottom
         btn_frame = ttk.Frame(self)
         btn_frame.pack(side="bottom", fill="x", padx=10, pady=10)
@@ -267,6 +269,7 @@ class AdvancedSettings(tk.Toplevel):
         ttk.Button(btn_frame, text="Apply changes...", command=self.apply_changes).pack(side="right", padx=5)
         ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side="right")
         self.grab_set()
+
     def apply_changes(self):
         if not self.config.has_section('SETTINGS'):
             self.config.add_section('SETTINGS')

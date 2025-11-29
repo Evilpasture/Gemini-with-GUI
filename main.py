@@ -312,7 +312,7 @@ class ChatManager:
 
         try:
             # The chat history is a list of Content objects
-            history_list = [types.Content.model_dump(h) for h in self.chat.get_history()]
+            history_list = [types.Content.model_dump(h, exclude_none=True) for h in self.chat.get_history()]
 
             with open(filepath, 'w') as f:
                 json.dump(history_list, f, indent=4)

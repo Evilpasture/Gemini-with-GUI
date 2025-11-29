@@ -29,6 +29,8 @@ CONFIG_FILE = "config.ini"
 DEFAULT_CONFIG = {
     'SETTINGS': {
         'MODEL_NAME': 'gemini-2.5-flash',
+        'USER_NAME': 'User',
+        'CHATBOT_NAME': 'Gemini',
         'INSTRUCTION': 'You are a helpful AI assistant.',
         'STANDARD_FONT_NAME': 'Arial',
         'STANDARD_FONT_SIZE': '10',
@@ -54,6 +56,8 @@ class PreferencesWindow(tk.Toplevel):
         # -- UI Variables --
         self.var_model = tk.StringVar(value=self.config.get('SETTINGS', 'MODEL_NAME'))
         self.var_temp = tk.DoubleVar(value=self.config.getfloat('SETTINGS', 'TEMPERATURE'))
+        self.var_user_name = tk.StringVar(value=self.config.get('SETTINGS', 'USER_NAME'))
+        self.var_chatbot_name = tk.StringVar(value=self.config.get('SETTINGS', 'CHATBOT_NAME'))
         self.var_font_size = tk.IntVar(value=self.config.getint('SETTINGS', 'STANDARD_FONT_SIZE'))
         # Text widget doesn't use StringVar, handled separately
 
@@ -101,10 +105,19 @@ class PreferencesWindow(tk.Toplevel):
         # Live update label on slide
         scale.configure(command=lambda v: lbl_val.configure(text=f"{float(v):.1f}"))
 
+        # # User Preferences
+        # Username
+        ttk.Label(self.tab_ai, text="User Name:").grid(row=3, column=0, sticky="w", pady=5)
+        ttk.Entry(self.tab_ai, textvariable=self.var_user_name, width=30).grid(row=3, column=1, sticky="w", pady=5)
+
+        # Chatbot Name
+        ttk.Label(self.tab_ai, text="Chatbot name:").grid(row=4, column=0, sticky="w", pady=5)
+        ttk.Entry(self.tab_ai, textvariable=self.var_chatbot_name, width=30).grid(row=4, column=1, sticky="w", pady=5)
+
         # System Instructions
-        ttk.Label(self.tab_ai, text="System Instructions:").grid(row=3, column=0, sticky="nw", pady=(20, 5))
+        ttk.Label(self.tab_ai, text="System Instructions:").grid(row=5, column=0, sticky="nw", pady=(20, 5))
         self.txt_instruct = tk.Text(self.tab_ai, height=5, width=30, font=("Arial", 9))
-        self.txt_instruct.grid(row=3, column=1, sticky="w", pady=(20, 5))
+        self.txt_instruct.grid(row=5, column=1, sticky="w", pady=(20, 5))
 
         # Load current instruction
         current_instr = self.config.get('SETTINGS', 'INSTRUCTION', fallback='')
@@ -130,6 +143,8 @@ class PreferencesWindow(tk.Toplevel):
         self.config.set('SETTINGS', 'MODEL_NAME', self.var_model.get().strip())
         self.config.set('SETTINGS', 'TEMPERATURE', f"{self.var_temp.get():.1f}")
         self.config.set('SETTINGS', 'STANDARD_FONT_SIZE', str(self.var_font_size.get()))
+        self.config.set('SETTINGS', 'USER_NAME', self.var_user_name.get().strip())
+        self.config.set('SETTINGS', 'CHATBOT_NAME', self.var_chatbot_name.get().strip())
         self.config.set('SETTINGS', 'INSTRUCTION', self.txt_instruct.get("1.0", "end-1c").strip())
 
         # 2. Write to File
@@ -256,7 +271,7 @@ class GUI:
             return
 
         self.entry.delete(0, tk.END)
-        self.append_text(f"You: {text}\n", "user")
+        self.append_text(f"{self.settings.get('user_name', 'User')}: {text}\n", "user")
 
         self.entry.config(state="disabled")
         self.button.config(state="disabled")
@@ -277,7 +292,7 @@ class GUI:
 
     def on_response_received(self, response_text, is_error=False):
         tag = "error" if is_error else "ai"
-        header = "Error: " if is_error else f"{self.settings['model_name']}: "
+        header = "Error: " if is_error else f"{self.settings['chatbot_name']}: "
 
         self.append_text(f"{header}\n{response_text}\n", tag)
 
@@ -292,6 +307,7 @@ class ChatManager:
         self.client = client
         self.gui = gui_ref
         self.settings = settings
+        self.persona_config = ""
         self.chat_config = None
         self.chat = None
         self.init_chat()
@@ -299,8 +315,9 @@ class ChatManager:
     def init_chat(self, history=None):
         """Initializes or Re-initializes the chat session with current settings."""
         try:
+            self.persona_config = f"At this present, you are talking to {self.settings['user_name']}. "
             self.chat_config = types.GenerateContentConfig(
-                system_instruction=self.settings['instruction'],
+                system_instruction=f"{self.settings['instruction']}\n{self.persona_config}",
                 temperature=self.settings['temperature']
             )
             self.chat = self.client.chats.create(
@@ -415,6 +432,8 @@ class App:
         # Parse into a clean dictionary for easier usage
         self.current_settings = {
             'model_name': self.config_parser.get('SETTINGS', 'MODEL_NAME', fallback='gemini-2.5-flash'),
+            'user_name': self.config_parser.get('SETTINGS', 'USER_NAME', fallback='User'),
+            'chatbot_name': self.config_parser.get('SETTINGS', 'CHATBOT_NAME', fallback='Gemini'),
             'instruction': self.config_parser.get('SETTINGS', 'INSTRUCTION', fallback=''),
             'font_name': self.config_parser.get('SETTINGS', 'STANDARD_FONT_NAME', fallback='Arial'),
             'font_size': self.config_parser.getint('SETTINGS', 'STANDARD_FONT_SIZE', fallback=10),
@@ -428,7 +447,7 @@ class App:
         # Update GUI Look
         self.gui.update_settings(self.current_settings)
         self.gui.append_text(
-            f"System: Settings loaded. Using {self.current_settings['model_name']} (T={self.current_settings['temperature']})\n",
+            f"System: Settings loaded. Using {self.current_settings['model_name']} (T={self.current_settings['temperature']})\nUser is now called {self.current_settings['user_name']}. Chatbot is now called {self.current_settings['chatbot_name']}.\n",
             "system")
 
         # Re-init Chat Manager with new model/temp

@@ -1,16 +1,25 @@
+# TKINTER
+
 import tkinter as tk
-import sys
-import os
-import threading
-import configparser
-import json
 from tkinter import ttk
 from tkinter import messagebox
 from tkinter import filedialog
+
+# SYSTEM
+import sys
+import os
+import threading
+
+# FILE INTEGRATION
+import configparser
+import json
+from dotenv import load_dotenv
+
+# AI
 from google import genai
 from google.genai.errors import APIError
 from google.genai import types
-from dotenv import load_dotenv
+
 
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")

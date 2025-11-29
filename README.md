@@ -12,6 +12,8 @@ Chat history reset functionality
 
 Environment-based configuration
 
+Save/load chats with a JSON
+
 # Setup
 
 Install dependencies:

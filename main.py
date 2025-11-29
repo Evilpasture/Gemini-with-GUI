@@ -110,6 +110,9 @@ class PreferencesWindow(tk.Toplevel):
         ttk.Label(self.tab_files, text="Note: Requires restart to fully apply UI scaling.", font=("Arial", 8, "italic"),
                   foreground="gray").grid(row=1, column=0, columnspan=2, sticky="w")
 
+        ttk.Label(self.tab_files, text="Chat logs are managed via 'Chat -> Save/Load Chat' menu options.",
+                  font=("Arial", 9, "italic")).grid(row=2, column=0, columnspan=2, sticky="w", pady=(20, 5))
+
     def save_changes(self):
         # 1. Update Config Object
         if not self.config.has_section('SETTINGS'):
@@ -297,7 +300,6 @@ class ChatManager:
                 history=history
             )
         except Exception as e:
-            # Don't exit app, just log error to GUI if possible, or console
             print(f"Chat Init Error: {e}")
             self.gui.append_text(
                 f"System Error: Failed to initialize model {self.settings['model_name']}. Check API key or Model Name.\n",

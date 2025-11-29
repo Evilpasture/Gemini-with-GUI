@@ -1,541 +1,32 @@
-# TKINTER
-
 import tkinter as tk
-from tkinter import ttk
 from tkinter import messagebox
-from tkinter import filedialog
-
-# SYSTEM
-import sys
 import os
-import threading
-
-# FILE INTEGRATION
-import configparser
-import json
+import sys
 from dotenv import load_dotenv
-
-# AI
 from google import genai
-from google.genai.errors import APIError
-from google.genai import types
 
+# Import our new modules
+from core.config import ConfigManager
+from core.ai_manager import ChatManager
+from ui.main_window import MainWindow
 
+# Load environment variables
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Configuration Defaults
-CONFIG_FILE = "config.ini"
-
-COMMENT_HEADER = """
-        # ---NOTE FOR SAFETY SETTINGS---
-        # I BELIEVE THAT YOU'RE A RESPONSIBLE ADULT
-        # VALUES TO USE: BLOCK_NONE, BLOCK_ONLY_HIGH, BLOCK_MEDIUM_AND_ABOVE, BLOCK_LOW_AND_ABOVE
-        """
-
-threshold_map = {
-    "BLOCK_NONE": types.HarmBlockThreshold.BLOCK_NONE,
-    "BLOCK_ONLY_HIGH": types.HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    "BLOCK_MEDIUM_AND_ABOVE": types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    "BLOCK_LOW_AND_ABOVE": types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-}
-
-DEFAULT_CONFIG = {
-    'SETTINGS': {
-        'MODEL_NAME': 'gemini-2.5-flash',
-        'USER_NAME': 'User',
-        'CHATBOT_NAME': 'Gemini',
-        'INSTRUCTION': 'You are a helpful AI assistant.',
-        'STANDARD_FONT_NAME': 'Arial',
-        'STANDARD_FONT_SIZE': '10',
-        'TEMPERATURE': '0.7'
-    },
-    'SAFETY_SETTINGS': {
-        'HARASSMENT_THRESHOLD': 'BLOCK_MEDIUM_AND_ABOVE',
-        'HATE_SPEECH_THRESHOLD': 'BLOCK_MEDIUM_AND_ABOVE',
-        'DANGEROUS_CONTENT_THRESHOLD': 'BLOCK_MEDIUM_AND_ABOVE',
-        'SEXUALLY_EXPLICIT_THRESHOLD': 'BLOCK_MEDIUM_AND_ABOVE',
-        'CIVIC_INTEGRITY_THRESHOLD': 'BLOCK_MEDIUM_AND_ABOVE',
-    }
-}
-
-
-class PreferencesWindow(tk.Toplevel):
-    """
-    Handles the UI and logic for modifying user settings.
-    """
-
-    def __init__(self, parent, config, on_save_callback):
-        super().__init__(parent)
-        self.config = config
-        self.on_save_callback = on_save_callback
-
-        self.title("Preferences")
-        self.geometry("500x450")
-        self.resizable(False, False)
-
-        # -- UI Variables --
-        self.var_model = tk.StringVar(value=self.config.get('SETTINGS', 'MODEL_NAME'))
-        self.var_temp = tk.DoubleVar(value=self.config.getfloat('SETTINGS', 'TEMPERATURE'))
-        self.var_user_name = tk.StringVar(value=self.config.get('SETTINGS', 'USER_NAME'))
-        self.var_chatbot_name = tk.StringVar(value=self.config.get('SETTINGS', 'CHATBOT_NAME'))
-        self.var_font_size = tk.IntVar(value=self.config.getint('SETTINGS', 'STANDARD_FONT_SIZE'))
-        # Text widget doesn't use StringVar, handled separately
-
-        # -- Layout --
-        self.notebook = ttk.Notebook(self)
-        self.notebook.pack(pady=10, padx=10, expand=True, fill='both')
-
-        self.tab_ai = ttk.Frame(self.notebook, padding="20")
-        self.tab_files = ttk.Frame(self.notebook, padding="20")
-
-        self.notebook.add(self.tab_ai, text="AI Behavior")
-        self.notebook.add(self.tab_files, text="System & Files")
-
-        self.txt_instruct = None
-
-        self.build_ai_tab()
-        self.build_system_tab()
-
-        # -- Action Buttons --
-        btn_frame = ttk.Frame(self)
-        btn_frame.pack(side="bottom", fill="x", padx=10, pady=10)
-
-        ttk.Button(btn_frame, text="Save & Apply", command=self.save_changes).pack(side="right", padx=5)
-        ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side="right")
-
-    def build_ai_tab(self):
-        # Model Name
-        ttk.Label(self.tab_ai, text="Model Name:").grid(row=0, column=0, sticky="w", pady=5)
-        ttk.Entry(self.tab_ai, textvariable=self.var_model, width=30).grid(row=0, column=1, sticky="w", pady=5)
-        ttk.Label(self.tab_ai, text="(e.g., gemini-2.0-flash, gemini-1.5-pro)", font=("Arial", 8, "italic")).grid(row=1,
-                                                                                                                  column=1,
-                                                                                                                  sticky="w")
-
-        # Temperature
-        ttk.Label(self.tab_ai, text="Temperature (Creativity):").grid(row=2, column=0, sticky="w", pady=(20, 5))
-
-        temp_frame = ttk.Frame(self.tab_ai)
-        temp_frame.grid(row=2, column=1, sticky="w", pady=(20, 5))
-
-        scale = ttk.Scale(temp_frame, from_=0.0, to=2.0, variable=self.var_temp, orient="horizontal", length=200)
-        scale.pack(side="left")
-        lbl_val = ttk.Label(temp_frame, text=f"{self.var_temp.get():.1f}")
-        lbl_val.pack(side="left", padx=5)
-
-        # Live update label on slide
-        scale.configure(command=lambda v: lbl_val.configure(text=f"{float(v):.1f}"))
-
-        # # User Preferences
-        # Username
-        ttk.Label(self.tab_ai, text="User Name:").grid(row=3, column=0, sticky="w", pady=5)
-        ttk.Entry(self.tab_ai, textvariable=self.var_user_name, width=30).grid(row=3, column=1, sticky="w", pady=5)
-
-        # Chatbot Name
-        ttk.Label(self.tab_ai, text="Chatbot name:").grid(row=4, column=0, sticky="w", pady=5)
-        ttk.Entry(self.tab_ai, textvariable=self.var_chatbot_name, width=30).grid(row=4, column=1, sticky="w", pady=5)
-
-        # System Instructions
-        ttk.Label(self.tab_ai, text="System Instructions:").grid(row=5, column=0, sticky="nw", pady=(20, 5))
-        self.txt_instruct = tk.Text(self.tab_ai, height=5, width=30, font=("Arial", 9))
-        self.txt_instruct.grid(row=5, column=1, sticky="w", pady=(20, 5))
-
-        # Load current instruction
-        current_instr = self.config.get('SETTINGS', 'INSTRUCTION', fallback='')
-        self.txt_instruct.insert("1.0", current_instr)
-
-        # For advanced settings
-        ttk.Button(self.tab_ai, text="Advanced...", command=self.open_advanced).grid(row=6, column=0, sticky="w", pady=5)
-
-    def open_advanced(self):
-        """Creates the new advanced window"""
-        AdvancedSettings(self, self.config)
-
-    def build_system_tab(self):
-        # Font Size
-        ttk.Label(self.tab_files, text="Font Size:").grid(row=0, column=0, sticky="w", pady=5)
-        ttk.Spinbox(self.tab_files, from_=8, to=24, textvariable=self.var_font_size, width=5).grid(row=0, column=1,
-                                                                                                   sticky="w", pady=5)
-
-        ttk.Label(self.tab_files, text="Note: Requires restart to fully apply UI scaling.", font=("Arial", 8, "italic"),
-                  foreground="gray").grid(row=1, column=0, columnspan=2, sticky="w")
-
-        ttk.Label(self.tab_files, text="Chat logs are managed via 'Chat -> Save/Load Chat' menu options.",
-                  font=("Arial", 9, "italic")).grid(row=2, column=0, columnspan=2, sticky="w", pady=(20, 5))
-
-    def save_changes(self):
-        # 1. Update Config Object
-        if not self.config.has_section('SETTINGS'):
-            self.config.add_section('SETTINGS')
-
-        self.config.set('SETTINGS', 'MODEL_NAME', self.var_model.get().strip())
-        self.config.set('SETTINGS', 'TEMPERATURE', f"{self.var_temp.get():.1f}")
-        self.config.set('SETTINGS', 'STANDARD_FONT_SIZE', str(self.var_font_size.get()))
-        self.config.set('SETTINGS', 'USER_NAME', self.var_user_name.get().strip())
-        self.config.set('SETTINGS', 'CHATBOT_NAME', self.var_chatbot_name.get().strip())
-        self.config.set('SETTINGS', 'INSTRUCTION', self.txt_instruct.get("1.0", "end-1c").strip())
-
-        # 2. Write to File
-        try:
-            with open(CONFIG_FILE, 'w') as configfile:
-                self.config.write(configfile)
-        except Exception as e:
-            messagebox.showerror("Save Error", f"Could not save config.ini: {e}")
-            return
-
-        # 3. Trigger App Callback
-        self.on_save_callback()
-        self.destroy()
-
-class AdvancedSettings(tk.Toplevel):
-    def __init__(self, parent, config):
-        super().__init__(parent)
-        self.config = config
-
-        self.title('Advanced Settings')
-        self.geometry("500x500")
-        self.resizable(False, False)
-
-        self.advanced_frame = ttk.Frame(self, padding="20")
-        self.advanced_frame.pack(fill="both", expand=True)
-        self.advanced_frame.grid_columnconfigure(1, weight=1)
-
-        self.choices = [threshold for threshold in threshold_map]
-
-        # Listing all the filter options
-        tk.Label(self.advanced_frame, text="HARASSMENT_THRESHOLD").grid(row=0, column=0, sticky="w", padx=10, pady=10)
-        self.harassment_threshold = tk.StringVar(
-            value=self.config.get('SAFETY_SETTINGS', 'HARASSMENT_THRESHOLD'))
-        self.harassment_threshold_option = ttk.OptionMenu(
-            self.advanced_frame,
-            self.harassment_threshold,
-            self.harassment_threshold.get(),
-            *self.choices
-        )
-        self.harassment_threshold_option.grid(row=0, column=1, sticky="e", padx=10, pady=10)
-
-        tk.Label(self.advanced_frame, text="HATE_SPEECH_THRESHOLD").grid(row=1, column=0, sticky="w", padx=10, pady=10)
-        self.hate_speech_threshold = tk.StringVar(
-            value=self.config.get('SAFETY_SETTINGS', 'HATE_SPEECH_THRESHOLD'))
-        self.hate_speech_threshold_option = ttk.OptionMenu(
-            self.advanced_frame,
-            self.hate_speech_threshold,
-            self.hate_speech_threshold.get(),
-            *self.choices
-        )
-        self.hate_speech_threshold_option.grid(row=1, column=1, sticky="e", padx=10, pady=10)
-
-        tk.Label(self.advanced_frame, text="DANGEROUS_CONTENT_THRESHOLD").grid(row=2, column=0, sticky="w", padx=10, pady=10)
-        self.dangerous_content_threshold = tk.StringVar(
-            value=self.config.get('SAFETY_SETTINGS', 'DANGEROUS_CONTENT_THRESHOLD'))
-        self.dangerous_content_threshold_option = ttk.OptionMenu(
-            self.advanced_frame,
-            self.dangerous_content_threshold,
-            self.dangerous_content_threshold.get(),
-            *self.choices
-        )
-        self.dangerous_content_threshold_option.grid(row=2, column=1, sticky="e", padx=10, pady=10)
-
-        tk.Label(self.advanced_frame, text="SEXUALLY_EXPLICIT_THRESHOLD").grid(row=3, column=0, sticky="w", padx=10,
-                                                                               pady=10)
-        self.sexually_explicit_threshold = tk.StringVar(
-            value=self.config.get('SAFETY_SETTINGS', 'SEXUALLY_EXPLICIT_THRESHOLD'))
-        self.sexually_explicit_threshold_option = ttk.OptionMenu(
-            self.advanced_frame,
-            self.sexually_explicit_threshold,
-            self.sexually_explicit_threshold.get(),
-            *self.choices
-        )
-        self.sexually_explicit_threshold_option.grid(row=3, column=1, sticky="e", padx=10, pady=10)
-
-        tk.Label(self.advanced_frame, text="CIVIC_INTEGRITY_THRESHOLD").grid(row=4, column=0, sticky="w", padx=10,
-                                                                               pady=10)
-        self.civic_integrity_threshold = tk.StringVar(
-            value=self.config.get('SAFETY_SETTINGS', 'CIVIC_INTEGRITY_THRESHOLD'))
-        self.civic_integrity_threshold_option = ttk.OptionMenu(
-            self.advanced_frame,
-            self.civic_integrity_threshold,
-            self.civic_integrity_threshold.get(),
-            *self.choices
-        )
-        self.civic_integrity_threshold_option.grid(row=4, column=1, sticky="e", padx=10, pady=10)
-
-        tk.Label(self.advanced_frame, text="This adjusts the filters.", font=("Arial", 8, "italic")).grid(row=5, column=0, sticky="es", padx=10)
-
-        # Frame for the buttons in the bottom
-        btn_frame = ttk.Frame(self)
-        btn_frame.pack(side="bottom", fill="x", padx=10, pady=10)
-
-        ttk.Button(btn_frame, text="Apply changes...", command=self.apply_changes).pack(side="right", padx=5)
-        ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side="right")
-        self.grab_set()
-
-    def apply_changes(self):
-        if not self.config.has_section('SETTINGS'):
-            self.config.add_section('SETTINGS')
-
-        self.config.set('SAFETY_SETTINGS', 'HARASSMENT_THRESHOLD', self.harassment_threshold.get().strip())
-        self.config.set('SAFETY_SETTINGS', 'HATE_SPEECH_THRESHOLD', self.hate_speech_threshold.get().strip())
-        self.config.set('SAFETY_SETTINGS', 'DANGEROUS_CONTENT_THRESHOLD', self.dangerous_content_threshold.get().strip())
-        self.config.set('SAFETY_SETTINGS', 'SEXUALLY_EXPLICIT_THRESHOLD', self.sexually_explicit_threshold.get().strip())
-        self.config.set('SAFETY_SETTINGS', 'CIVIL_INTEGRITY_THRESHOLD', self.civic_integrity_threshold.get().strip())
-
-        try:
-            with open(CONFIG_FILE, 'w') as configfile:
-                self.config.write(configfile)
-        except Exception as e:
-            messagebox.showerror("Save Error", f"Could not save config.ini: {e}")
-            return
-
-        self.destroy()
-
-
-class GUI:
-    def __init__(self, _root, controller, settings):
-        self.root = _root
-        self.controller = controller
-        self.settings = settings  # Now receives settings dictionary
-
-        self.root.geometry("800x600")
-        self.update_title()
-
-        # Styles
-        self.font_spec = (self.settings['font_name'], self.settings['font_size'])
-
-        # Menu bar
-        self.menubar = tk.Menu(self.root)
-
-        self.chat_menu = tk.Menu(self.menubar, tearoff=0)
-        self.chat_menu.add_command(label="Clear Chat", command=self.clear_text)
-        self.chat_menu.add_command(label="Reset Session", command=self.controller.restart_chat)
-        self.chat_menu.add_separator()
-
-        self.chat_menu.add_command(label="Save Chat...", command=self.controller.save_chat)
-        self.chat_menu.add_command(label="Load Chat...", command=self.controller.load_chat)
-        self.chat_menu.add_separator()
-
-        self.chat_menu.add_command(label="Exit", command=self.controller.on_closing)
-
-        self.tools_menu = tk.Menu(self.menubar, tearoff=0)
-        self.tools_menu.add_command(label="Preferences", command=self.show_options)
-
-        self.menubar.add_cascade(menu=self.chat_menu, label="Chat")
-        self.menubar.add_cascade(menu=self.tools_menu, label="Tools")
-
-        self.root.config(menu=self.menubar)
-
-        # Grid layout
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-
-        # Main Container
-        self.frame = ttk.Frame(self.root, padding="10")
-        self.frame.grid(row=0, column=0, sticky="nsew")
-        self.frame.columnconfigure(0, weight=1)
-        self.frame.rowconfigure(0, weight=1)
-        self.frame.rowconfigure(1, weight=0)
-
-        # Chat History
-        self.text_container = ttk.Frame(self.frame)
-        self.text_container.grid(column=0, row=0, sticky="nsew", pady=(0, 10))
-        self.text_container.columnconfigure(0, weight=1)
-        self.text_container.rowconfigure(0, weight=1)
-
-        self.scrollbar = ttk.Scrollbar(self.text_container)
-        self.scrollbar.grid(column=1, row=0, sticky="ns")
-
-        self.textbox = tk.Text(
-            self.text_container,
-            height=20,
-            state="disabled",
-            wrap="word",
-            yscrollcommand=self.scrollbar.set,
-            font=self.font_spec
-        )
-        self.textbox.tag_config("user", foreground="blue",
-                                font=(self.settings['font_name'], self.settings['font_size'], "bold"))
-        self.textbox.tag_config("ai", foreground="#006400", font=self.font_spec)
-        self.textbox.tag_config("error", foreground="red", font=self.font_spec)
-        self.textbox.tag_config("system", foreground="gray",
-                                font=(self.settings['font_name'], int(self.settings['font_size']) - 2, "italic"))
-        self.textbox.grid(column=0, row=0, sticky="nsew")
-
-        self.scrollbar.config(command=self.textbox.yview)
-
-        # Input Area
-        self.input_frame = ttk.Frame(self.frame)
-        self.input_frame.grid(column=0, row=1, sticky="ew")
-        self.input_frame.columnconfigure(0, weight=1)
-
-        self.entry = ttk.Entry(self.input_frame, font=self.font_spec)
-        self.entry.grid(column=0, row=0, sticky="ew", padx=(0, 5))
-        self.entry.bind('<Return>', lambda event: self.handle_submit())
-
-        self.button = ttk.Button(self.input_frame, text="Send", command=self.handle_submit)
-        self.button.grid(column=1, row=0, sticky="e")
-
-        # Status Label
-        self.status_label = ttk.Label(self.frame, text="Ready", font=("Arial", 8))
-        self.status_label.grid(row=2, column=0, sticky="w", pady=(5, 0))
-
-        self.root.protocol("WM_DELETE_WINDOW", self.controller.on_closing)
-
-    def update_title(self):
-        self.root.title(f"Client: {self.settings['model_name']} (Temp: {self.settings['temperature']})")
-
-    def update_settings(self, new_settings):
-        """Called when settings change to update UI elements immediately where possible"""
-        self.settings = new_settings
-        self.font_spec = (self.settings['font_name'], self.settings['font_size'])
-        self.textbox.configure(font=self.font_spec)
-        self.entry.configure(font=self.font_spec)
-        self.update_title()
-
-    def show_options(self):
-        # Open the new PreferencesWindow class
-        PreferencesWindow(self.root, self.controller.config_parser, self.controller.reload_settings)
-
-    def handle_submit(self):
-        text = self.entry.get()
-        if not text.strip():
-            return
-
-        self.entry.delete(0, tk.END)
-        self.append_text(f"{self.settings.get('user_name', 'User')}: {text}\n", "user")
-
-        self.entry.config(state="disabled")
-        self.button.config(state="disabled")
-        self.status_label.config(text="Thinking...")
-
-        self.controller.process_input(text)
-
-    def clear_text(self):
-        self.textbox.configure(state="normal")
-        self.textbox.delete('1.0', tk.END)
-        self.textbox.configure(state="disabled")
-
-    def append_text(self, text, tag):
-        self.textbox.configure(state="normal")
-        self.textbox.insert(tk.END, text + "\n", tag)
-        self.textbox.configure(state="disabled")
-        self.textbox.see(tk.END)
-
-    def on_response_received(self, response_text, is_error=False):
-        tag = "error" if is_error else "ai"
-        header = "Error: " if is_error else f"{self.settings['chatbot_name']}: "
-
-        self.append_text(f"{header}\n{response_text}\n", tag)
-
-        self.entry.config(state="normal")
-        self.button.config(state="normal")
-        self.status_label.config(text="Ready")
-        self.entry.focus()
-
-
-class ChatManager:
-    def __init__(self, client, gui_ref, settings, safety_settings):
-        self.client = client
-        self.gui = gui_ref
-        self.settings = settings
-        self.safety_settings = safety_settings
-        self.persona_config = ""
-        self.chat_config = None
-        self.chat = None
-        self.init_chat()
-
-    def init_chat(self, history=None):
-        """Initializes or Re-initializes the chat session with current settings."""
-        try:
-            self.persona_config = f"At this present, you are talking to {self.settings['user_name']}. "
-            self.chat_config = types.GenerateContentConfig(
-                system_instruction=f"{self.settings['instruction']}\n{self.persona_config}",
-                temperature=self.settings['temperature'],
-                safety_settings=self.safety_settings
-            )
-            self.chat = self.client.chats.create(
-                model=self.settings['model_name'],
-                config=self.chat_config,
-                history=history
-            )
-        except Exception as e:
-            print(f"Chat Init Error: {e}")
-            self.gui.append_text(
-                f"System Error: Failed to initialize model {self.settings['model_name']}. Check API key or Model Name.\n",
-                "error")
-
-    def save_history(self, filepath):
-        """Saves the current chat history to a JSON file."""
-        if not self.chat:
-            return "Error: No active chat session to save.", False
-
-        try:
-            # The chat history is a list of Content objects
-            history_list = [types.Content.model_dump(h, exclude_none=True) for h in self.chat.get_history()]
-
-            with open(filepath, 'w') as f:
-                json.dump(history_list, f, indent=4)
-
-            return f"Chat history saved to {filepath}", True
-        except Exception as e:
-            return f"Save Error: {e}", False
-
-    def load_history(self, filepath):
-        """Loads chat history from a JSON file and starts a new session."""
-        try:
-            with open(filepath, 'r') as f:
-                history_data = json.load(f)
-
-            # The loaded data is a list of dictionaries (Content objects)
-            # We need to convert these back to Content objects
-            loaded_history = [types.Content(**d) for d in history_data]
-
-            # Re-initialize the chat session with the loaded history
-            self.init_chat(history=loaded_history)
-
-            # Return history for GUI to display
-            return loaded_history, f"Chat history loaded from {filepath}", True
-
-        except FileNotFoundError:
-            return None, "Error: File not found.", False
-        except json.JSONDecodeError:
-            return None, "Error: Invalid chat history file format (JSON decode error).", False
-        except Exception as e:
-            return None, f"Load Error: {e}", False
-
-    def process_input(self, user_text):
-        thread = threading.Thread(target=self._run_api_call, args=(user_text,))
-        thread.daemon = True
-        thread.start()
-
-    def _run_api_call(self, text):
-        if not self.chat:
-            self.gui.root.after(0, self.gui.on_response_received, "Chat session not initialized.", True)
-            return
-
-        try:
-            response = self.chat.send_message(text)
-            result_text = response.text
-            is_error = False
-        except APIError as e:
-            result_text = f"API Error {e.code}: {e.message}"
-            is_error = True
-        except Exception as e:
-            result_text = f"Unexpected Error: {str(e)}"
-            is_error = True
-
-        self.gui.root.after(0, self.gui.on_response_received, result_text, is_error)
-
 
 class App:
-    def __init__(self, _root):
-        self.root = _root
-        self.current_settings = None
-        self.safety_settings = None
-        self.config_parser = configparser.ConfigParser()
-        self.load_config()
+    def __init__(self, root):
+        self.root = root
 
+        # 1. Initialize Config
+        self.config_manager = ConfigManager()
+        self.current_settings = self.config_manager.get_settings()
+        self.safety_settings = self.config_manager.get_safety_settings()
+
+        # 2. Initialize API Client
         if not API_KEY:
-            messagebox.showerror("Error", "GEMINI_API_KEY not found in environment variables.")
+            messagebox.showerror("Error", "GEMINI_API_KEY not found.")
             self.root.destroy()
             return
 
@@ -546,64 +37,39 @@ class App:
             self.root.destroy()
             return
 
-        # Initialize GUI with current settings
-        self.gui = GUI(self.root, self, self.current_settings)
+        # 3. Initialize GUI
+        # We pass 'self' as the controller
+        self.gui = MainWindow(self.root, self, self.current_settings)
 
-        # Initialize Logic
-        self.chat_manager = ChatManager(self.client, self.gui, settings=self.current_settings, safety_settings=self.safety_settings)
-
-    def load_config(self):
-        """Loads config.ini or creates it if missing."""
-        if not os.path.exists(CONFIG_FILE):
-            for section, options in DEFAULT_CONFIG.items():
-                self.config_parser[section] = options
-            with open(CONFIG_FILE, 'w') as f:
-                f.write(COMMENT_HEADER + '\n\n')
-                self.config_parser.write(f)
-        else:
-            self.config_parser.read(CONFIG_FILE)
-
-        # Parse into a clean dictionary for easier usage
-        self.current_settings = {
-            'model_name': self.config_parser.get('SETTINGS', 'MODEL_NAME', fallback='gemini-2.5-flash'),
-            'user_name': self.config_parser.get('SETTINGS', 'USER_NAME', fallback='User'),
-            'chatbot_name': self.config_parser.get('SETTINGS', 'CHATBOT_NAME', fallback='Gemini'),
-            'instruction': self.config_parser.get('SETTINGS', 'INSTRUCTION', fallback=''),
-            'font_name': self.config_parser.get('SETTINGS', 'STANDARD_FONT_NAME', fallback='Arial'),
-            'font_size': self.config_parser.getint('SETTINGS', 'STANDARD_FONT_SIZE', fallback=10),
-            'temperature': self.config_parser.getfloat('SETTINGS', 'TEMPERATURE', fallback=0.5),
-        }
-
-        self.safety_settings = [
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                threshold=threshold_map[self.config_parser.get('SAFETY_SETTINGS', 'HARASSMENT_THRESHOLD')],
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                threshold=threshold_map[self.config_parser.get('SAFETY_SETTINGS', 'HATE_SPEECH_THRESHOLD')],
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold=threshold_map[self.config_parser.get('SAFETY_SETTINGS','DANGEROUS_CONTENT_THRESHOLD')],
-            ),
-        ]
-
-    def reload_settings(self):
-        """Called by PreferencesWindow to apply changes."""
-        self.load_config()
-
-        # Update GUI Look
-        self.gui.update_settings(self.current_settings)
-        self.gui.append_text(
-            f"System: Settings loaded. Using {self.current_settings['model_name']} (T={self.current_settings['temperature']})\nUser is now called {self.current_settings['user_name']}. Chatbot is now called {self.current_settings['chatbot_name']}.\n",
-            "system")
-
-        # Re-init Chat Manager with new model/temp
-        self.chat_manager = ChatManager(self.client, self.gui, self.current_settings, self.safety_settings)
+        # 4. Initialize Logic
+        # We pass the GUI's callback method so the Logic can update the UI safely
+        self.chat_manager = ChatManager(
+            client=self.client,
+            response_callback=self.gui.on_response_received,  # Decoupled callback
+            settings=self.current_settings,
+            safety_settings=self.safety_settings
+        )
 
     def process_input(self, text):
+        """Bridge between GUI and Chat Logic"""
         self.chat_manager.process_input(text)
+
+    def reload_settings(self):
+        """Called when settings are saved in the UI"""
+        # Reload config from file
+        self.config_manager.load_config()
+        self.current_settings = self.config_manager.get_settings()
+        self.safety_settings = self.config_manager.get_safety_settings()
+
+        # Update GUI
+        self.gui.update_settings(self.current_settings)
+        self.gui.append_text(
+            f"System: Settings loaded. Model: {self.current_settings['model_name']}",
+            "system"
+        )
+
+        # Update Chat Manager
+        self.chat_manager.update_settings(self.current_settings, self.safety_settings)
 
     def restart_chat(self):
         self.gui.clear_text()
@@ -611,9 +77,11 @@ class App:
         self.chat_manager.init_chat()
 
     def save_chat(self):
+        # We handle the file dialog here or in the GUI, then call the manager
+        from tkinter import filedialog
         filepath = filedialog.asksaveasfilename(
             defaultextension=".json",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            filetypes=[("JSON files", "*.json")],
             title="Save Chat History"
         )
         if filepath:
@@ -623,6 +91,7 @@ class App:
             self.gui.append_text(f"System: {message}", tag)
 
     def load_chat(self):
+        from tkinter import filedialog
         filepath = filedialog.askopenfilename(
             defaultextension=".json",
             filetypes=[("JSON files", "*.json")],
@@ -636,26 +105,19 @@ class App:
             self.gui.append_text(f"System: {message}", tag)
 
             if success and history:
-                # Clear the existing display
                 self.gui.clear_text()
-
-                # Re-display the loaded history
+                # Re-populate UI
                 for content in history:
-                    # Determine if the content part is text and assign role/tag
                     if content.parts and content.parts[0].text:
                         text = content.parts[0].text
                         role = content.role
-
                         if role == 'user':
                             self.gui.append_text(f"You: {text}", "user")
                         elif role == 'model':
                             self.gui.append_text(f"{self.current_settings['model_name']}:\n{text}", "ai")
-                        # Skip system messages or other complex parts for simplicity
-
-                self.gui.append_text(f"System: Chat session re-established with {len(history)} messages.", "system")
 
     def on_closing(self):
-        if tk.messagebox.askokcancel("Exit", "Are you sure you want to exit?"):
+        if messagebox.askokcancel("Exit", "Are you sure you want to exit?"):
             self.root.destroy()
 
 

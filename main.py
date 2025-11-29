@@ -312,7 +312,7 @@ class ChatManager:
 
         try:
             # The chat history is a list of Content objects
-            history_list = [h.to_dict() for h in self.chat.history]
+            history_list = [types.Content.model_dump(h) for h in self.chat.get_history()]
 
             with open(filepath, 'w') as f:
                 json.dump(history_list, f, indent=4)
@@ -329,7 +329,7 @@ class ChatManager:
 
             # The loaded data is a list of dictionaries (Content objects)
             # We need to convert these back to Content objects
-            loaded_history = [types.Content.from_dict(d) for d in history_data]
+            loaded_history = [types.Content(**d) for d in history_data]
 
             # Re-initialize the chat session with the loaded history
             self.init_chat(history=loaded_history)

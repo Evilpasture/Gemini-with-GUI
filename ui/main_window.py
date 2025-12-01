@@ -185,7 +185,8 @@ class MainWindow:
         self.root.title(f"AI Assistant - {self.settings['model_name']}")
 
     def show_options(self):
-        PreferencesWindow(self.root, self.controller.config_manager.get_parser(), self.controller.reload_settings)
+        options = PreferencesWindow(self.root, self.controller.config_manager.get_parser(), self.controller.reload_settings)
+        self.root.wait_window(options)
 
     def handle_submit(self):
         text = self.entry.get()

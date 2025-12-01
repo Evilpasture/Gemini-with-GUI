@@ -15,6 +15,8 @@ class PreferencesWindow(tk.Toplevel):
         self.geometry("450x600")
         self.resizable(False, False)
 
+        self.grab_set()
+
         # Variables
         self.var_model = tk.StringVar(value=self.config.get('SETTINGS', 'MODEL_NAME'))
         self.var_temp = tk.DoubleVar(value=self.config.getfloat('SETTINGS', 'TEMPERATURE'))
@@ -41,7 +43,8 @@ class PreferencesWindow(tk.Toplevel):
         # Main Buttons
         btn_frame = ttk.Frame(self)
         btn_frame.pack(side="bottom", fill="x", padx=15, pady=15)
-        ttk.Button(btn_frame, text="Reset to Default", command=self.reset_default).pack(side="left")
+        self.reset_default = ttk.Button(btn_frame, text="Reset to Default", command=self.reset_default)
+        self.reset_default.pack(side="left")
         ttk.Button(btn_frame, text="Save & Apply", command=self.save).pack(side="right", padx=5)
         ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side="right")
 
@@ -86,6 +89,7 @@ class PreferencesWindow(tk.Toplevel):
         AdvancedSettings(self, self.config)
 
     def reset_default(self):
+        self.reset_default.config(state="disabled")
         confirm = tk.messagebox.askokcancel("Reset", "Do you really want to reset your settings?")
         try:
             if confirm:
@@ -101,6 +105,8 @@ class PreferencesWindow(tk.Toplevel):
         if confirm:
             self.on_save_callback(reset_default = True)
             self.destroy()
+        else:
+            self.reset_default.config(state="normal")
 
     def save(self):
         if not self.config.has_section('SETTINGS'): self.config.add_section('SETTINGS')
@@ -127,6 +133,8 @@ class AdvancedSettings(tk.Toplevel):
         self.title('Safety Filters')
         self.geometry("450x450")
         self.resizable(False, False)
+
+        self.grab_set()
 
         self.frame = ttk.Frame(self, padding="20")
         self.frame.pack(fill="both", expand=True)

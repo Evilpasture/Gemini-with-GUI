@@ -160,6 +160,7 @@ class MainWindow:
                   bordercolor=[("focus", colors["highlight"])]
                   )
 
+    # This manages the theme update.
     def update_settings(self, new_settings):
         self.settings = new_settings
         self.font_spec = (self.settings['font_name'], self.settings['font_size'])

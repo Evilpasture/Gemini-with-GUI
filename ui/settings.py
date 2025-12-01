@@ -86,16 +86,21 @@ class PreferencesWindow(tk.Toplevel):
         AdvancedSettings(self, self.config)
 
     def reset_default(self):
+        confirm = tk.messagebox.askokcancel("Reset", "Do you really want to reset your settings?")
         try:
-            os.remove("config.ini")
-            self.on_save_callback()
-            self.destroy()
+            if confirm:
+                os.remove("config.ini")
         except FileNotFoundError:
-            pass
+            pass # a deleted file doesn't need to be deleted.
         except PermissionError:
             tk.messagebox.showerror("Error", "Permission denied. Please grant yourself administrative permissions if you have to.")
+            confirm = False
         except Exception as e:
             tk.messagebox.showerror("Error", f"Unknown error. {e}")
+            confirm = False
+        if confirm:
+            self.on_save_callback(reset_default = True)
+            self.destroy()
 
     def save(self):
         if not self.config.has_section('SETTINGS'): self.config.add_section('SETTINGS')

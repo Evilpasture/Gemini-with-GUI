@@ -7,6 +7,7 @@ from ttkthemes import ThemedTk
 from core.config import ConfigManager
 from core.ai_manager import ChatManager
 from ui.main_window import MainWindow
+from ui.settings import PreferencesWindow
 
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
@@ -43,7 +44,9 @@ class App:
     def process_input(self, text):
         self.chat_manager.process_input(text)
 
-    def reload_settings(self):
+    def reload_settings(self, reset_default = None):
+        if reset_default is not None:
+            PreferencesWindow(self.root, self.config_manager.get_parser(), self.reload_settings)
         self.config_manager.load_config()
         self.current_settings = self.config_manager.get_settings()
         self.safety_settings = self.config_manager.get_safety_settings()

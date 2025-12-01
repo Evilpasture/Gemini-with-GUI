@@ -44,9 +44,10 @@ class ChatManager:
         if not self.chat:
             self.response_callback("Chat session not initialized.", True)
             return
-
+        # self.handle_safety()
         try:
             response = self.chat.send_message(text)
+            # I'll do it later. See line 65.
             result_text = response.text
             is_error = False
         except errors.APIError as e:
@@ -59,6 +60,13 @@ class ChatManager:
         # Use the callback to send data back to Main/GUI
         # Note: The GUI is responsible for using root.after if this is called from a thread
         self.response_callback(result_text, is_error)
+
+    def handle_safety(self, reason, original_prompt):
+        # not very urgent right now, you can always relax the filters.
+        # the only problem is when you wrote a long prompt, but you didn't receive a response, thus wasting input token.
+        print(reason)
+        new_prompt = original_prompt
+        return new_prompt
 
     def save_history(self, filepath):
         if not self.chat:

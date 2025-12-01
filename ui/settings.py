@@ -9,7 +9,7 @@ class PreferencesWindow(tk.Toplevel):
     def __init__(self, parent, config_parser, on_save_callback):
         super().__init__(parent)
         self.config = config_parser
-        self.on_save_callback = on_save_callback
+        self.on_save_callback = on_save_callback # this is the reload_settings
 
         self.title("Preferences")
         self.geometry("450x600")

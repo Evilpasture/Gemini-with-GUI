@@ -47,7 +47,7 @@ class ChatManager:
 
         try:
             response = self.chat.send_message(text)
-            # I'll do it later.
+            # I'll do it later. See line 65.
             result_text = response.text
             is_error = False
         except errors.APIError as e:
@@ -62,7 +62,8 @@ class ChatManager:
         self.response_callback(result_text, is_error)
 
     def handle_safety(self, reason, original_prompt):
-        # I'll do it later.
+        # not very urgent right now, you can always relax the filters.
+        # the only problem is when you wrote a long prompt, but you didn't receive a response, thus wasting input token.
         print(reason)
         new_prompt = original_prompt
         return new_prompt

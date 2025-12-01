@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
+import os
 from core.config import CONFIG_FILE, LIGHT_THEMES, THRESHOLD_MAP
 
 
@@ -11,7 +12,7 @@ class PreferencesWindow(tk.Toplevel):
         self.on_save_callback = on_save_callback
 
         self.title("Preferences")
-        self.geometry("450x600")  # Increased height to fit the new button
+        self.geometry("450x600")
         self.resizable(False, False)
 
         # Variables
@@ -23,6 +24,8 @@ class PreferencesWindow(tk.Toplevel):
         self.var_theme = tk.StringVar(value=self.config.get('SETTINGS', 'THEME', fallback='arc'))
 
         # Layout
+        self.txt_instruct = None
+
         notebook = ttk.Notebook(self)
         notebook.pack(pady=10, padx=10, expand=True, fill='both')
 
@@ -38,6 +41,7 @@ class PreferencesWindow(tk.Toplevel):
         # Main Buttons
         btn_frame = ttk.Frame(self)
         btn_frame.pack(side="bottom", fill="x", padx=15, pady=15)
+        ttk.Button(btn_frame, text="Reset to Default", command=self.reset_default).pack(side="left")
         ttk.Button(btn_frame, text="Save & Apply", command=self.save).pack(side="right", padx=5)
         ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side="right")
 
@@ -60,7 +64,6 @@ class PreferencesWindow(tk.Toplevel):
         self.txt_instruct.grid(row=4, column=1, sticky="w", pady=8)
         self.txt_instruct.insert("1.0", self.config.get('SETTINGS', 'INSTRUCTION', fallback=''))
 
-        # --- RESTORED: Advanced Settings Button ---
         ttk.Button(self.tab_ai, text="Advanced Safety Filters...", command=self.open_advanced).grid(row=5, column=0,
                                                                                                     columnspan=2,
                                                                                                     sticky="ew",
@@ -82,6 +85,17 @@ class PreferencesWindow(tk.Toplevel):
     def open_advanced(self):
         AdvancedSettings(self, self.config)
 
+    def reset_default(self):
+        try:
+            # stub
+            pass
+        except FileNotFoundError:
+            pass
+        except PermissionError:
+            tk.messagebox.showerror("Error", "Permission denied. Please grant yourself administrative permissions if you have to.")
+        except Exception as e:
+            tk.messagebox.showerror("Error", f"Unknown error. {e}")
+
     def save(self):
         if not self.config.has_section('SETTINGS'): self.config.add_section('SETTINGS')
 
@@ -100,7 +114,6 @@ class PreferencesWindow(tk.Toplevel):
         self.destroy()
 
 
-# --- RESTORED: Advanced Settings Class ---
 class AdvancedSettings(tk.Toplevel):
     def __init__(self, parent, config):
         super().__init__(parent)
@@ -116,12 +129,24 @@ class AdvancedSettings(tk.Toplevel):
         self.choices = list(THRESHOLD_MAP.keys())
         self.vars = {}
 
-        labels = ["HARASSMENT", "HATE_SPEECH", "DANGEROUS_CONTENT", "SEXUALLY_EXPLICIT", "CIVIC_INTEGRITY"]
+        labels = [
+            "HARASSMENT",
+            "HATE_SPEECH",
+            "DANGEROUS_CONTENT",
+            "SEXUALLY_EXPLICIT",
+            "CIVIC_INTEGRITY"
+        ]
 
-        ttk.Label(self.frame, text="Adjust Content Blocking Thresholds", font=("Arial", 10, "bold")).grid(row=0,
-                                                                                                          column=0,
-                                                                                                          columnspan=2,
-                                                                                                          pady=(0, 20))
+        ttk.Label(
+            self.frame,
+            text="Adjust Content Blocking Thresholds",
+            font=("Arial", 10, "bold")
+        ).grid(
+            row=0,
+            column=0,
+            columnspan=2,
+            pady=(0, 20)
+        )
 
         for i, lbl in enumerate(labels):
             key = f"{lbl}_THRESHOLD"

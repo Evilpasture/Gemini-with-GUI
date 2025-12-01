@@ -47,7 +47,11 @@ class ChatManager:
 
         try:
             response = self.chat.send_message(text)
-            result_text = response.text
+            # I'll do it later.
+            if response.candidate[0].finish_reason:
+                result_text = self.handle_safety(response.candidate[0].finish_reason, text)
+            else:
+                result_text = response.text
             is_error = False
         except errors.APIError as e:
             result_text = f"API Error {e.code}: {e.message}"
@@ -59,6 +63,12 @@ class ChatManager:
         # Use the callback to send data back to Main/GUI
         # Note: The GUI is responsible for using root.after if this is called from a thread
         self.response_callback(result_text, is_error)
+
+    def handle_safety(self, reason, original_prompt):
+        # I'll do it later.
+        print(reason)
+        new_prompt = original_prompt
+        return new_prompt
 
     def save_history(self, filepath):
         if not self.chat:

@@ -48,10 +48,7 @@ class ChatManager:
         try:
             response = self.chat.send_message(text)
             # I'll do it later.
-            if response.candidate[0].finish_reason:
-                result_text = self.handle_safety(response.candidate[0].finish_reason, text)
-            else:
-                result_text = response.text
+            result_text = response.text
             is_error = False
         except errors.APIError as e:
             result_text = f"API Error {e.code}: {e.message}"

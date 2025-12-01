@@ -87,8 +87,9 @@ class PreferencesWindow(tk.Toplevel):
 
     def reset_default(self):
         try:
-            # stub
-            pass
+            os.remove("config.ini")
+            self.on_save_callback()
+            self.destroy()
         except FileNotFoundError:
             pass
         except PermissionError:

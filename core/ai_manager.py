@@ -44,7 +44,7 @@ class ChatManager:
         if not self.chat:
             self.response_callback("Chat session not initialized.", True)
             return
-
+        # self.handle_safety()
         try:
             response = self.chat.send_message(text)
             # I'll do it later. See line 65.

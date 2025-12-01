@@ -18,7 +18,7 @@ THRESHOLD_MAP = {
 # Default values if config.ini doesn't exist
 DEFAULT_CONFIG = {
     'SETTINGS': {
-        'MODEL_NAME': 'gemini-2.0-flash',
+        'MODEL_NAME': 'gemini-2.5-flash', #gemini-2.0-flash could be an option but 2.5 has 250 RPD compared to 200 RPD of 2.0
         'USER_NAME': 'User',
         'CHATBOT_NAME': 'Gemini',
         'INSTRUCTION': 'You are a helpful AI assistant.',

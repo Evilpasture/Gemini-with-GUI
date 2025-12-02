@@ -16,6 +16,7 @@ class PreferencesWindow(tk.Toplevel):
         self.resizable(False, False)
 
         self.grab_set()
+        self.transient(parent)
 
         # Variables
         self.var_model = tk.StringVar(value=self.config.get('SETTINGS', 'MODEL_NAME'))

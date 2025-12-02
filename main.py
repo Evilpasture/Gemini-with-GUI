@@ -138,6 +138,7 @@ class App:
     def on_closing(self):
         if messagebox.askokcancel("Exit", "Exit application?"):
             self.root.destroy()
+            sys.exit(0)
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ class App:
 Add your API key in an .env file in the same directory.""")
             try:
                 with open(".env", "w") as f:
-                    f.write(f"API_KEY=\"YOUR_API_KEY\"\n")
+                    f.write(f"GEMINI_API_KEY=\"YOUR_API_KEY\"\n")
             except OSError as e:
                 print(f"Failed to write .env template file: {e}")
             self.root.destroy()

@@ -1,14 +1,29 @@
 import tkinter as tk
 from tkinter import messagebox
 import os
+import sys
+
+try:
+    from core.config import ConfigManager
+    from core.ai_manager import ChatManager
+    from ui.main_window import MainWindow
+    from ui.settings import PreferencesWindow
+    from ui.dialog import Dialog
+except ImportError:
+    try:
+        from config import ConfigManager
+        from ai_manager import ChatManager
+        from main_window import MainWindow
+        from settings import PreferencesWindow
+        from dialog import Dialog
+    except ImportError as e:
+        tk.messagebox.showerror("Startup Error", f"Critical files missing.\nError: {e}")
+        sys.exit(1)
+
 from dotenv import load_dotenv
 from google import genai
+from google.genai.errors import APIError
 from ttkthemes import ThemedTk
-from core.config import ConfigManager
-from core.ai_manager import ChatManager
-from ui.main_window import MainWindow
-from ui.settings import PreferencesWindow
-from ui.dialog import Dialog
 
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")

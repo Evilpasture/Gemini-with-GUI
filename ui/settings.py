@@ -1,6 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 import os
 from core.config import CONFIG_FILE, LIGHT_THEMES, THRESHOLD_MAP
 

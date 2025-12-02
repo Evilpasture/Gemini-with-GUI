@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
 import os
 from dotenv import load_dotenv
 from google import genai
@@ -22,15 +22,7 @@ class App:
         self.safety_settings = self.config_manager.get_safety_settings()
 
         if not API_KEY:
-            messagebox.showerror("Error", """GEMINI_API_KEY not found. 
-Add your API key in an .env file in the same directory.""")
-            try:
-                with open(".env", "w") as f:
-                    f.write(f"GEMINI_API_KEY=\"YOUR_API_KEY\"\n")
-            except OSError as e:
-                print(f"Failed to write .env template file: {e}")
-            self.root.destroy()
-            return
+            self.check_api(self.root)
 
         try:
             self.client = genai.Client(api_key=API_KEY)
@@ -53,6 +45,21 @@ Add your API key in an .env file in the same directory.""")
             settings=self.current_settings,
             safety_settings=self.safety_settings
         )
+    # ugly, but works for now
+    def check_api(self, ref_root):
+        key = simpledialog.askstring(
+            "Gemini",
+            "Enter your API key",
+            parent=ref_root,
+            show='*'
+        )
+        global API_KEY
+        API_KEY = key
+        try:
+            with open(".env", "w") as f:
+                f.write(f"GEMINI_API_KEY=\"{key}\"\n")
+        except OSError as e:
+            print(f"Failed to write .env template file: {e}")
 
     def process_input(self, text):
         self.chat_manager.process_input(text)

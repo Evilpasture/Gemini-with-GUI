@@ -87,7 +87,8 @@ class PreferencesWindow(tk.Toplevel):
                   foreground="gray").grid(row=2, column=0, columnspan=2, sticky="w")
 
     def open_advanced(self):
-        AdvancedSettings(self, self.config)
+        advanced_settings = AdvancedSettings(self, self.config)
+        self.wait_window(advanced_settings)
 
     def reset_default(self):
         self.reset_default.config(state="disabled")
@@ -136,6 +137,7 @@ class AdvancedSettings(tk.Toplevel):
         self.resizable(False, False)
 
         self.grab_set()
+        self.transient(parent)
 
         self.frame = ttk.Frame(self, padding="20")
         self.frame.pack(fill="both", expand=True)

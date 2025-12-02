@@ -41,6 +41,9 @@ class App:
 
         if not self.api_key:
             key = self.check_api(self.root)
+            if key is None:
+                sys.exit(0)
+
             self.api_key = key
             try:
                 with open(".env", "w") as f:

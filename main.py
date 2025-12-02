@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog
+from tkinter import messagebox
 import os
 from dotenv import load_dotenv
 from google import genai
@@ -8,6 +8,7 @@ from core.config import ConfigManager
 from core.ai_manager import ChatManager
 from ui.main_window import MainWindow
 from ui.settings import PreferencesWindow
+from ui.dialog import Dialog
 
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
@@ -21,11 +22,19 @@ class App:
         self.current_settings = self.config_manager.get_settings()
         self.safety_settings = self.config_manager.get_safety_settings()
 
-        if not API_KEY:
-            self.check_api(self.root)
+        self.api_key = API_KEY
+
+        if not self.api_key:
+            key = self.check_api(self.root)
+            self.api_key = key
+            try:
+                with open(".env", "w") as f:
+                    f.write(f"GEMINI_API_KEY=\"{key}\"\n")
+            except OSError as e:
+                print(f"Failed to write .env file: {e}")
 
         try:
-            self.client = genai.Client(api_key=API_KEY)
+            self.client = genai.Client(api_key=self.api_key)
         except ValueError as e:
             messagebox.showerror(
                 "Initialization Error",
@@ -45,21 +54,15 @@ class App:
             settings=self.current_settings,
             safety_settings=self.safety_settings
         )
-    # ugly, but works for now
+    # create a dialog prompt when API key is missing
     def check_api(self, ref_root):
-        key = simpledialog.askstring(
-            "Gemini",
-            "Enter your API key",
+        key = Dialog.ask_string(
             parent=ref_root,
+            title="Gemini API Key",
+            prompt="Enter your API Key:",
             show='*'
         )
-        global API_KEY
-        API_KEY = key
-        try:
-            with open(".env", "w") as f:
-                f.write(f"GEMINI_API_KEY=\"{key}\"\n")
-        except OSError as e:
-            print(f"Failed to write .env template file: {e}")
+        return key
 
     def process_input(self, text):
         self.chat_manager.process_input(text)

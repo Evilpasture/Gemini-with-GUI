@@ -142,7 +142,14 @@ class App:
 
 
 if __name__ == "__main__":
-    # MainWindow will load the real theme from config, it's just a safe default
+    # ensure high DPI awareness, just because.
+    try:
+        from ctypes import windll
+
+        windll.shcore.SetProcessDpiAwareness(1)
+    except Exception as e:
+        print(e)
+
     root = ThemedTk(theme="arc")
     app = App(root)
     root.mainloop()

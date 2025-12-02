@@ -72,15 +72,34 @@ class App:
             settings=self.current_settings,
             safety_settings=self.safety_settings
         )
-    # create a dialog prompt when API key is missing
-    def check_api(self, ref_root):
-        key = Dialog.ask_string(
-            parent=ref_root,
-            title="Gemini API Key",
-            prompt="Enter your API Key:",
-            show='*'
-        )
-        return key
+
+    @staticmethod
+    def check_api(ref_root):
+        while True:
+            key = Dialog.ask_string(
+                parent=ref_root,
+                title="Gemini API Key",
+                prompt="Enter your API Key:",
+                show='*'
+            )
+            if key is None:
+                return None
+
+            try:
+                _client = genai.Client(api_key=key)
+                # test
+                from google.genai.types import ListModelsConfig
+                _ = list(_client.models.list(config=ListModelsConfig(page_size=1)))
+                return key
+            except APIError as e:
+                if "API key not valid" in str(e) or "400" in str(e):
+                    messagebox.showerror(title="Error", message="Invalid API Key")
+                else:
+                    messagebox.showerror(title="Error", message=f"API Error: {e}")
+            except Exception as e:
+                messagebox.showerror(
+                    title="Error",
+                    message=f"Unexpected error: {e}\nCheck your internet connection.")
 
     def process_input(self, text):
         self.chat_manager.process_input(text)

@@ -82,13 +82,11 @@ class App:
     def process_input(self, text):
         self.chat_manager.process_input(text)
 
-    def reload_settings(self, reset_default = None):
-        if reset_default is not None:
-            PreferencesWindow(self.root, self.config_manager.get_parser(), self.reload_settings)
+    def reload_settings(self, reset_default=None):
         self.config_manager.load_config()
         self.current_settings = self.config_manager.get_settings()
         self.safety_settings = self.config_manager.get_safety_settings()
-        self.gui.update_settings(self.current_settings)  # Theme update happens here
+        self.gui.update_settings(self.current_settings)
         self.chat_manager.update_settings(self.current_settings, self.safety_settings)
 
     def restart_chat(self):

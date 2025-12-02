@@ -27,6 +27,26 @@ from ttkthemes import ThemedTk
 
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
+OUTPUT_DIR_NAME = "chats"
+DEFAULT_FILENAME = "chat.json"
+
+if getattr(sys, 'frozen', False):
+    # Running as a frozen executable
+    SCRIPT_DIR = os.path.dirname(sys.executable)
+else:
+    # Running as a standard Python script
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+OUTPUT_PATH = os.path.join(SCRIPT_DIR, OUTPUT_DIR_NAME)
+
+try:
+    os.makedirs(OUTPUT_PATH, exist_ok=True)
+    print(f"Output directory exists at: {OUTPUT_PATH}")
+except OSError as e:
+    print(f"Error creating directory {OUTPUT_PATH}: {e}")
+    # Fallback to the script directory if creation fails
+    OUTPUT_PATH = SCRIPT_DIR
+    print(f"Falling back to script directory: {OUTPUT_PATH}")
 
 
 class App:
@@ -118,14 +138,26 @@ class App:
 
     def save_chat(self):
         from tkinter import filedialog
-        filepath = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON", "*.json")])
+
+        success = False
+
+        filepath = filedialog.asksaveasfilename(
+            defaultextension = ".json",
+            filetypes = [("JSON", "*.json")],
+            initialfile = DEFAULT_FILENAME,
+            initialdir = OUTPUT_PATH,
+        )
         if filepath:
             msg, success = self.chat_manager.save_history(filepath)
             self.gui.append_text(f"System: {msg}", "system" if success else "error")
+        return success
 
     def load_chat(self):
         from tkinter import filedialog
-        filepath = filedialog.askopenfilename(filetypes=[("JSON", "*.json")])
+        filepath = filedialog.askopenfilename(
+            filetypes = [("JSON", "*.json")],
+            initialdir = OUTPUT_PATH,
+        )
         if filepath:
             hist, msg, success = self.chat_manager.load_history(filepath)
             if success and hist:
@@ -136,16 +168,25 @@ class App:
                         self.gui.append_text(f"{'You' if role == 'user' else 'Gemini'}: {c.parts[0].text}", role)
 
     def on_closing(self):
-        if messagebox.askokcancel("Exit", "Exit application?"):
+        prompt = messagebox.askyesnocancel(title="Closing?", message="Do you want to save chat history before closing?")
+        if prompt:
+            saved = self.save_chat()
+            if saved:
+                self.root.destroy()
+                sys.exit(0)
+            else:
+                return
+        elif prompt is False:
             self.root.destroy()
             sys.exit(0)
+        else:
+            return
 
 
 if __name__ == "__main__":
-    # ensure high DPI awareness, just because.
+    # high DPI awareness, just because.
     try:
         from ctypes import windll
-
         windll.shcore.SetProcessDpiAwareness(1)
     except Exception as e:
         print(e)

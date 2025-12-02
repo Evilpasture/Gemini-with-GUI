@@ -220,19 +220,3 @@ class MainWindow:
         self.textbox.configure(state="normal")
         self.textbox.delete('1.0', tk.END)
         self.textbox.configure(state="disabled")
-
-# stub
-class Dialog(tk.Toplevel):
-    def __init__(self, parent, title, prompt, show):
-        super().__init__(parent)
-        self.title = title
-        self.prompt = prompt
-        self.show = show
-        self.output = None
-
-    def handle_input(self):
-        try:
-            with open(".env", "w") as f:
-                f.write(f"GEMINI_API_KEY=\"{self.output}\"\n")
-        except OSError as e:
-            print(f"Failed to write .env template file: {e}")

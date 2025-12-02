@@ -46,8 +46,8 @@ class App:
 
             self.api_key = key
             try:
-                with open(".env", "w") as f:
-                    f.write(f"GEMINI_API_KEY=\"{key}\"\n")
+                with open(".env", "a") as f:
+                    f.write(f"\nGEMINI_API_KEY=\"{key}\"\n")
             except OSError as e:
                 print(f"Failed to write .env file: {e}")
 

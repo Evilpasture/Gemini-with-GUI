@@ -63,7 +63,7 @@ class Dialog(tk.Toplevel):
         raw_input = self.var.get().strip()
 
         if raw_input == "":
-            messagebox.showerror("Error", "Please enter a value", parent=self)
+            messagebox.showwarning("Warning", "Please enter a value", parent=self)
             self.entry.focus_set()
             return
         try:

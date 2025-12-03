@@ -91,8 +91,8 @@ class Dialog(tk.Toplevel):
         return Dialog(parent, title, prompt, value_type=str, show=show).show_dialog()
 
     @staticmethod
-    def ask_integer(parent, title, prompt):
-        return Dialog(parent, title, prompt, value_type=int).show_dialog()
+    def ask_integer(parent, title, prompt, show=None):
+        return Dialog(parent, title, prompt, value_type=int, show=show).show_dialog()
 
     @staticmethod
     def ask_float(parent, title, prompt):

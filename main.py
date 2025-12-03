@@ -20,10 +20,14 @@ except ImportError:
         tk.messagebox.showerror("Startup Error", f"Critical files missing.\nError: {e}")
         sys.exit(1)
 
-from dotenv import load_dotenv
-from google import genai
-from google.genai.errors import APIError
-from ttkthemes import ThemedTk
+try:
+    from dotenv import load_dotenv
+    from google import genai
+    from google.genai.errors import APIError
+    from ttkthemes import ThemedTk
+except ImportError as e:
+    tk.messagebox.showerror("Startup Error", f"Missing dependencies.\nError: {e}")
+    sys.exit(1)
 
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")

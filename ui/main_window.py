@@ -54,10 +54,12 @@ class MainWindow:
         self._build_menu()
         self._build_layout()
 
+        self.is_dirty = self.textbox.edit_modified()
+
         # 2. Force apply colors
         self._apply_theme_colors(target_theme)
 
-        self.root.protocol("WM_DELETE_WINDOW", self.controller.on_closing)
+        self.root.protocol("WM_DELETE_WINDOW", lambda: self.controller.on_closing(self.textbox))
 
     def _build_menu(self):
         self.menubar = tk.Menu(self.root)
@@ -67,10 +69,10 @@ class MainWindow:
         self.file_menu.add_command(label="New Session", command=self.controller.restart_chat)
         self.file_menu.add_command(label="Clear Output", command=self.clear_text)
         self.file_menu.add_separator()
-        self.file_menu.add_command(label="Save History...", command=self.controller.save_chat)
+        self.file_menu.add_command(label="Save History...", command=lambda: self.controller.save_chat(self.textbox))
         self.file_menu.add_command(label="Load History...", command=self.controller.load_chat)
         self.file_menu.add_separator()
-        self.file_menu.add_command(label="Exit", command=self.controller.on_closing)
+        self.file_menu.add_command(label="Exit", command=lambda: self.controller.on_closing(self.textbox))
         self.menubar.add_cascade(label="File", menu=self.file_menu)
 
         self.tools_menu = tk.Menu(self.menubar, tearoff=0)
@@ -97,9 +99,11 @@ class MainWindow:
             yscrollcommand=scrollbar.set, font=self.font_spec,
             bg="#ffffff", fg="#333333",
             bd=1, relief="solid", padx=15, pady=15,
-            highlightthickness=0
+            highlightthickness=0,
+            undo=True
         )
         self.textbox.pack(side="left", fill="both", expand=True)
+        self.textbox.edit_modified(False)
         scrollbar.config(command=self.textbox.yview)
 
         # Input Area
@@ -213,6 +217,10 @@ class MainWindow:
     def append_text(self, text, tag):
         self.textbox.configure(state="normal")
         self.textbox.insert(tk.END, text + "\n", tag)
+
+        if tag == "system":
+            self.textbox.edit_modified(False)
+
         self.textbox.configure(state="disabled")
         self.textbox.see(tk.END)
 

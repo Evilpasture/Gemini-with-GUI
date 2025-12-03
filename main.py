@@ -140,7 +140,7 @@ class App:
         self.gui.append_text("System: Session reset.\n", "system")
         self.chat_manager.init_chat()
 
-    def save_chat(self):
+    def save_chat(self, chatbox=None):
         from tkinter import filedialog
 
         success = False
@@ -153,6 +153,8 @@ class App:
         )
         if filepath:
             msg, success = self.chat_manager.save_history(filepath)
+            if chatbox is not None and success and chatbox.edit_modified():
+                chatbox.edit_modified(False)
             self.gui.append_text(f"System: {msg}", "system" if success else "error")
         return success
 
@@ -171,20 +173,24 @@ class App:
                         role = "user" if c.role == 'user' else "ai"
                         self.gui.append_text(f"{'You' if role == 'user' else 'Gemini'}: {c.parts[0].text}", role)
 
-    def on_closing(self):
-        prompt = messagebox.askyesnocancel(title="Closing?", message="Do you want to save chat history before closing?")
-        if prompt:
-            saved = self.save_chat()
-            if saved:
+    def on_closing(self, chatbox=None):
+        if chatbox is not None and chatbox.edit_modified():
+            prompt = messagebox.askyesnocancel(title="Closing?", message="Do you want to save chat history before closing?")
+            if prompt:
+                saved = self.save_chat()
+                if saved:
+                    self.root.destroy()
+                    sys.exit(0)
+                else:
+                    return
+            elif prompt is False:
                 self.root.destroy()
                 sys.exit(0)
             else:
                 return
-        elif prompt is False:
+        else:
             self.root.destroy()
             sys.exit(0)
-        else:
-            return
 
 
 if __name__ == "__main__":

@@ -7,6 +7,9 @@ CONFIG_FILE = "config.ini"
 # List of supported clean light themes for the Settings Dropdown
 LIGHT_THEMES = ["arc", "yaru", "breeze", "radiance", "plastik"]
 
+# Fallback list
+ALL_MODELS = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro", "gemini-1.5-pro"]
+
 # Mapping string values from config.ini to Google GenAI types
 THRESHOLD_MAP = {
     "BLOCK_NONE": types.HarmBlockThreshold.BLOCK_NONE,
@@ -18,7 +21,7 @@ THRESHOLD_MAP = {
 # Default values if config.ini doesn't exist
 DEFAULT_CONFIG = {
     'SETTINGS': {
-        'MODEL_NAME': 'gemini-2.5-flash', #gemini-2.0-flash could be an option but 2.5 has 250 RPD compared to 200 RPD of 2.0
+        'MODEL_NAME': 'gemini-2.5-flash', # gemini-2.0-flash could be an option but 2.5 has 250 RPD compared to 200 RPD of 2.0
         'USER_NAME': 'User',
         'CHATBOT_NAME': 'Gemini',
         'INSTRUCTION': 'You are a helpful AI assistant.',
@@ -55,7 +58,7 @@ class ConfigManager:
     def get_settings(self):
         """Returns a dictionary of current application settings."""
         return {
-            'model_name': self.parser.get('SETTINGS', 'MODEL_NAME', fallback='gemini-2.0-flash'),
+            'model_name': self.parser.get('SETTINGS', 'MODEL_NAME', fallback='gemini-2.5-flash'),
             'user_name': self.parser.get('SETTINGS', 'USER_NAME', fallback='User'),
             'chatbot_name': self.parser.get('SETTINGS', 'CHATBOT_NAME', fallback='Gemini'),
             'instruction': self.parser.get('SETTINGS', 'INSTRUCTION', fallback=''),

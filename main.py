@@ -45,8 +45,6 @@ DEFAULT_FILENAME = "chat.json"
 OUTPUT_PATH = SCRIPT_DIR / OUTPUT_DIR_NAME
 
 try:
-    os.makedirs(OUTPUT_PATH, exist_ok=True)
-    print(f"Output directory exists at: {OUTPUT_PATH}")
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
     print(f"Output directory established at: {OUTPUT_PATH}")
 except OSError as e:
@@ -55,14 +53,18 @@ except OSError as e:
 
 
 class App:
-    def __init__(self, root):
-        self.root = root
+    def __init__(self, _root):
+        self.root = _root
 
         self.config_manager = ConfigManager()
         self.current_settings = self.config_manager.get_settings()
         self.safety_settings = self.config_manager.get_safety_settings()
 
         self.api_key = API_KEY
+
+        self.dynamic_models = []
+
+        self.gui = MainWindow(self.root, self, self.current_settings, dynamic_models=self.dynamic_models)
 
         if not self.api_key:
             key = self.check_api(self.root)
@@ -78,6 +80,10 @@ class App:
 
         try:
             self.client = genai.Client(api_key=self.api_key)
+            model_list = self.client.models.list()
+            for model in model_list:
+                if "generateContent" in model.supported_actions and model.name.startswith("models/gemini"):
+                    self.dynamic_models.append(model.name.split('/')[-1])
         except ValueError as e:
             messagebox.showerror(
                 "Initialization Error",
@@ -88,9 +94,9 @@ class App:
         except Exception as e:
             messagebox.showerror("Error", f"Unexpected error during client setup:\n{e}")
             self.root.destroy()
-            return
+            sys.exit(1)
 
-        self.gui = MainWindow(self.root, self, self.current_settings)
+
         self.chat_manager = ChatManager(
             client=self.client,
             response_callback=self.gui.on_response_received,
@@ -129,7 +135,7 @@ class App:
     def process_input(self, text):
         self.chat_manager.process_input(text)
 
-    def reload_settings(self, reset_default=None):
+    def reload_settings(self):
         self.config_manager.load_config()
         self.current_settings = self.config_manager.get_settings()
         self.safety_settings = self.config_manager.get_safety_settings()

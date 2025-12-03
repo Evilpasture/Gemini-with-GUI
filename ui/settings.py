@@ -1,14 +1,15 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import os
-from core.config import CONFIG_FILE, LIGHT_THEMES, THRESHOLD_MAP
+from core.config import CONFIG_FILE, LIGHT_THEMES, THRESHOLD_MAP, ALL_MODELS
 
 
 class PreferencesWindow(tk.Toplevel):
-    def __init__(self, parent, config_parser, on_save_callback):
+    def __init__(self, parent, config_parser, on_save_callback, dynamic_model=None):
         super().__init__(parent)
         self.config = config_parser
         self.on_save_callback = on_save_callback # this is the reload_settings
+        self.dynamic_model = dynamic_model
 
         self.title("Preferences")
         self.geometry("450x600")
@@ -52,7 +53,15 @@ class PreferencesWindow(tk.Toplevel):
         def row(idx, label, var=None):
             ttk.Label(self.tab_ai, text=label).grid(row=idx, column=0, sticky="w", pady=8)
             if var:
-                ttk.Entry(self.tab_ai, textvariable=var, width=25).grid(row=idx, column=1, sticky="w", pady=8)
+                if var == self.var_model:
+                    ttk.Combobox(
+                        self.tab_ai,
+                        textvariable=var,
+                        values=self.dynamic_model if self.dynamic_model else ALL_MODELS).grid(
+                        row=idx, column=1, sticky="w", pady=8
+                    )
+                else:
+                    ttk.Entry(self.tab_ai, textvariable=var, width=25).grid(row=idx, column=1, sticky="w", pady=8)
 
         row(0, "Model Name:", self.var_model)
 

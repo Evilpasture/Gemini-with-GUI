@@ -33,10 +33,11 @@ THEME_ACCENTS = {
 
 
 class MainWindow:
-    def __init__(self, root, controller, settings):
+    def __init__(self, root, controller, settings, dynamic_models):
         self.root = root
         self.controller = controller
         self.settings = settings
+        self.dynamic_models = dynamic_models
 
         self.root.geometry("850x650")
 
@@ -189,34 +190,72 @@ class MainWindow:
         self.root.title(f"AI Assistant - {self.settings['model_name']}")
 
     def show_options(self):
-        options = PreferencesWindow(self.root, self.controller.config_manager.get_parser(), self.controller.reload_settings)
+        options = PreferencesWindow(self.root, self.controller.config_manager.get_parser(), self.controller.reload_settings, self.dynamic_models)
         self.root.wait_window(options)
 
     def handle_submit(self):
         text = self.entry.get()
         if not text.strip(): return
+
         self.entry.delete(0, tk.END)
-        self.append_text(f"You: {text}\n", "user")
         self.entry.config(state="disabled")
         self.btn_send.config(state="disabled")
+
+        self.append_text(f"You: {text}\n", "user")
+
+        bot_name = self.settings['chatbot_name']
+        self.textbox.configure(state="normal")
+        self.textbox.insert(tk.END, f"{bot_name}: ", "ai")  # No newline yet
+        self.textbox.configure(state="disabled")
+
         self.status_label.config(text="Thinking...")
         self.controller.process_input(text)
 
-    def on_response_received(self, response_text, is_error=False):
-        self.root.after(0, lambda: self._update_ui_after_response(response_text, is_error))
+    def on_response_received(self, response_text, status_type):
+        self.root.after(0, lambda: self._update_ui_after_response(response_text, status_type))
 
-    def _update_ui_after_response(self, response_text, is_error):
-        tag = "error" if is_error else "ai"
-        name = self.settings['chatbot_name']
-        self.append_text(f"{name}: {response_text}\n", tag)
-        self.entry.config(state="normal")
-        self.btn_send.config(state="normal")
-        self.status_label.config(text="Ready")
-        self.entry.focus()
+    def _update_ui_after_response(self, text, status_type):
+        if status_type == "stream":
+            # Just append the raw chunk text to the end of the line
+            self.textbox.configure(state="normal")
+            self.textbox.insert(tk.END, text, "ai")
+            self.textbox.see(tk.END)  # Auto-scroll
+            self.textbox.configure(state="disabled")
+
+            # Update status to show activity
+            self.status_label.config(text="Generating...")
+
+        elif status_type == "finished":
+            # Add a final newline to prepare for the next turn
+            self.textbox.configure(state="normal")
+            self.textbox.insert(tk.END, "\n\n")
+            self.textbox.configure(state="disabled")
+            self.textbox.see(tk.END)
+
+            # Re-enable controls
+            self.entry.config(state="normal")
+            self.btn_send.config(state="normal")
+            self.status_label.config(text="Ready")
+            self.entry.focus()
+
+        elif status_type == "error":
+            # If an error happens, print it on a new line
+            self.textbox.configure(state="normal")
+            self.textbox.insert(tk.END, f"\nError: {text}\n\n", "error")
+            self.textbox.configure(state="disabled")
+
+            # Re-enable controls
+            self.entry.config(state="normal")
+            self.btn_send.config(state="normal")
+            self.status_label.config(text="Error")
 
     def append_text(self, text, tag):
         self.textbox.configure(state="normal")
-        self.textbox.insert(tk.END, text + "\n", tag)
+
+        if self.textbox.get("end-2c", "end-1c") != "\n":
+            self.textbox.insert(tk.END, "\n")
+
+        self.textbox.insert(tk.END, text + "\n\n", tag)  # Add extra spacing
 
         if tag == "system":
             self.textbox.edit_modified(False)

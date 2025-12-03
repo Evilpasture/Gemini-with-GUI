@@ -12,10 +12,19 @@ class ChatManager:
         self.init_chat()
 
     def update_settings(self, new_settings, new_safety):
+        current_history = None
+        if self.chat:
+            try:
+                current_history = self.chat.get_history()
+            except Exception as e:
+                print(f"Chat Init Error: {e}")
+                current_history = []
+
         self.settings = new_settings
         self.safety_settings = new_safety
-        # Note: Changing settings usually requires re-init of chat to take effect on system prompt
-        self.init_chat()
+
+        # Note: Changing settings will reinitialize chat with current history
+        self.init_chat(history=current_history)
 
     def init_chat(self, history=None):
         try:
@@ -46,20 +55,19 @@ class ChatManager:
             return
         # self.handle_safety()
         try:
-            response = self.chat.send_message(text)
-            # I'll do it later. See line 65.
-            result_text = response.text
-            is_error = False
-        except errors.APIError as e:
-            result_text = f"API Error {e.code}: {e.message}"
-            is_error = True
-        except Exception as e:
-            result_text = f"Unexpected Error: {str(e)}"
-            is_error = True
+            response_stream = self.chat.send_message_stream(text)
 
-        # Use the callback to send data back to Main/GUI
-        # Note: The GUI is responsible for using root.after if this is called from a thread
-        self.response_callback(result_text, is_error)
+            for chunk in response_stream:
+                if chunk.text:
+                    # Send partial chunks to GUI
+                    # Note: You need to update your callback to handle "append" vs "finished"
+                    self.response_callback(chunk.text, "stream")
+
+            self.response_callback(None, "finished")  # Signal done
+        except errors.APIError as e:
+            self.response_callback(f"API Error {e.code}: {e.message}", True)
+        except Exception as e:
+            self.response_callback(f"Error: {str(e)}", True)
 
     def handle_safety(self, reason, original_prompt):
         # not very urgent right now, you can always relax the filters.

@@ -1,7 +1,27 @@
 import tkinter as tk
 from tkinter import messagebox
+from pathlib import Path
 import os
 import sys
+
+# --- Third-Party Dependency Check ---
+try:
+    from dotenv import load_dotenv
+    from google import genai
+    from google.genai.errors import APIError
+    from ttkthemes import ThemedTk
+except ImportError as e:
+    missing_package = str(e).split(' ')[-1]
+    tk.messagebox.showerror(
+        "Dependency Error",
+        f"Missing critical library: '{missing_package}'. Please install dependencies."
+    )
+    sys.exit(1)
+
+# --- Internal Module Setup ---
+SCRIPT_DIR = Path(getattr(sys, 'frozen', False) and sys.executable or __file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.append(str(SCRIPT_DIR))
 
 try:
     from core.config import ConfigManager
@@ -9,24 +29,11 @@ try:
     from ui.main_window import MainWindow
     from ui.settings import PreferencesWindow
     from ui.dialog import Dialog
-except ImportError:
-    try:
-        from config import ConfigManager
-        from ai_manager import ChatManager
-        from main_window import MainWindow
-        from settings import PreferencesWindow
-        from dialog import Dialog
-    except ImportError as e:
-        tk.messagebox.showerror("Startup Error", f"Critical files missing.\nError: {e}")
-        sys.exit(1)
-
-try:
-    from dotenv import load_dotenv
-    from google import genai
-    from google.genai.errors import APIError
-    from ttkthemes import ThemedTk
 except ImportError as e:
-    tk.messagebox.showerror("Startup Error", f"Missing dependencies.\nError: {e}")
+    tk.messagebox.showerror(
+        "Internal Error",
+        f"Critical application files are missing or misplaced.\nError: {e}"
+    )
     sys.exit(1)
 
 load_dotenv()
@@ -34,23 +41,17 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 OUTPUT_DIR_NAME = "chats"
 DEFAULT_FILENAME = "chat.json"
 
-if getattr(sys, 'frozen', False):
-    # Running as a frozen executable
-    SCRIPT_DIR = os.path.dirname(sys.executable)
-else:
-    # Running as a standard Python script
-    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-OUTPUT_PATH = os.path.join(SCRIPT_DIR, OUTPUT_DIR_NAME)
+OUTPUT_PATH = SCRIPT_DIR / OUTPUT_DIR_NAME
 
 try:
     os.makedirs(OUTPUT_PATH, exist_ok=True)
     print(f"Output directory exists at: {OUTPUT_PATH}")
+    OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
+    print(f"Output directory established at: {OUTPUT_PATH}")
 except OSError as e:
     print(f"Error creating directory {OUTPUT_PATH}: {e}")
-    # Fallback to the script directory if creation fails
-    OUTPUT_PATH = SCRIPT_DIR
-    print(f"Falling back to script directory: {OUTPUT_PATH}")
+    print(f"Falling back to script directory: {SCRIPT_DIR}")
 
 
 class App:

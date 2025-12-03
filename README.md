@@ -2,34 +2,56 @@
 
 A lightweight, desktop-based chat interface for Google's Gemini models built with Python and Tkinter with several features.
 
-# Features
+## Features
 
-Real-time chat interface
+- Real-time chat interface
 
-Uses ttkthemes to allow you to use 5 select light visual themes for the interface (arc, yaru, breeze, radiance, plastik)
+- Uses ttkthemes to allow you to use 5 select light visual themes for the interface (arc, yaru, breeze, radiance, plastik)
 
-Real time status display
+- Real time status display
 
-Chat history reset functionality
+- Chat history reset functionality
 
-UI locking to prevent multiple requests
+- UI locking to prevent multiple requests
 
-Environment-based configuration
+- Environment-based configuration
 
-Robust error-handling by displaying errors of critical issues
+- Robust error-handling by displaying errors of critical issues
 
-Configuration is read with a config.ini
+- Configuration is read with a config.ini
 
-Save/load chats with a JSON
+- Save/load chats with a JSON
 
-System instructions and persona
+- System instructions and persona
 
-# Setup
+## Setup
 
-Install dependencies:
-pip install -r requirements.txt or use an IDE to install them for you
+### Create, then activate the Python virtual environment(based on your OS)
 
-Add your API Key to .env manually. (recommended, but you can add it in the dialog)
+1. Create
 
-Run the application:
-main.py
+- Linux/macOS: python3 -m venv venv
+
+- Windows: python -m venv venv
+
+2. Activation
+
+- Linux/macOS: source venv/bin/activate
+
+- Windows (Command Prompt): venv\Scripts\activate.bat
+
+- Windows (PowerShell): .\venv\Scripts\Activate.ps1
+
+### Install dependencies
+
+1. pip install -r requirements.txt (or use an IDE to install them for you if possible)
+
+2. Add your API Key to .env manually. (recommended, but you can add it in the dialog)
+
+- Linux/macOS: touch /path/to/your/directory/.env
+
+- Windows: type nul > C:\path\to\your\directory\.env
+
+### Run the application:
+
+- python main.py OR py main.py (in the current PATH to the directory)

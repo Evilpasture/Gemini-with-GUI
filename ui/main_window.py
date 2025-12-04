@@ -2,14 +2,14 @@ import tkinter as tk
 from tkinter import ttk
 from .settings import PreferencesWindow
 try:
-    from util.stopwatch_logic import Stopwatch
+    from util.time_logic import Stopwatch
     HAS_STOPWATCH = True
 except ImportError:
     try:
-        from stopwatch_logic import Stopwatch
+        from time_logic import Stopwatch
         HAS_STOPWATCH = True
     except ImportError:
-        print("stopwatch_logic.py not found, but module is optional.")
+        print("time_logic.py not found, but module is optional.")
         HAS_STOPWATCH = False
 
 # Enhanced palettes... but I won't add dark mode, it's bloody hard.

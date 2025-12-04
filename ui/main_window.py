@@ -140,11 +140,28 @@ class MainWindow:
             self.stopwatch = Stopwatch(self.root, self.time_label)
 
     def _configure_tags(self, theme_color):
-        self.textbox.tag_config("user", foreground=theme_color, font=(self.font_spec[0], self.font_spec[1], "bold"))
-        self.textbox.tag_config("ai", foreground="#28a745", font=self.font_spec)
-        self.textbox.tag_config("error", foreground="#dc3545", font=self.font_spec)
-        self.textbox.tag_config("system", foreground="#6c757d",
-                                font=(self.font_spec[0], int(self.font_spec[1]) - 1, "italic"))
+        tag_map = {
+            "user": {
+                "foreground": theme_color,
+                "font": (self.font_spec[0], self.font_spec[1], "bold")
+            },
+            "ai": {
+                "foreground": "#28a745",
+                "font": self.font_spec
+            },
+            "error": {
+                "foreground": "#dc3545",
+                "font": self.font_spec
+            },
+            "system": {
+                "foreground": "#6c757d",
+                "font": (self.font_spec[0], int(self.font_spec[1]) - 1, "italic")
+            }
+        }
+
+        # Loop through the map to apply the configurations
+        for tag_name, config in tag_map.items():
+            self.textbox.tag_config(tag_name, **config)
 
     def _apply_theme_colors(self, theme_name):
         colors = THEME_ACCENTS.get(theme_name, THEME_ACCENTS["arc"])

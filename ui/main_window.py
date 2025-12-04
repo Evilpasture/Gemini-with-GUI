@@ -1,6 +1,16 @@
 import tkinter as tk
 from tkinter import ttk
 from .settings import PreferencesWindow
+try:
+    from util.stopwatch_logic import Stopwatch
+    HAS_STOPWATCH = True
+except ImportError:
+    try:
+        from stopwatch_logic import Stopwatch
+        HAS_STOPWATCH = True
+    except ImportError:
+        print("stopwatch_logic.py not found, but module is optional.")
+        HAS_STOPWATCH = False
 
 # Enhanced palettes... but I won't add dark mode, it's bloody hard.
 THEME_ACCENTS = {
@@ -118,10 +128,16 @@ class MainWindow:
         self.btn_send = ttk.Button(input_frame, text="Send Message", command=self.handle_submit)
         self.btn_send.pack(side="right")
 
+        self.time_label = ttk.Label(main_frame, text="00:00.00", font=("Arial", 9), foreground="gray")
+        self.time_label.pack(side="bottom", anchor="w", )
+
         self.status_label = ttk.Label(main_frame, text="Ready", font=("Arial", 9), foreground="gray")
         self.status_label.pack(side="bottom", anchor="w", pady=(5, 0))
 
         self._configure_tags("#0056b3")
+
+        if HAS_STOPWATCH:
+            self.stopwatch = Stopwatch(self.root, self.time_label)
 
     def _configure_tags(self, theme_color):
         self.textbox.tag_config("user", foreground=theme_color, font=(self.font_spec[0], self.font_spec[1], "bold"))
@@ -209,6 +225,8 @@ class MainWindow:
         self.textbox.configure(state="disabled")
 
         self.status_label.config(text="Thinking...")
+        self.stopwatch.reset()
+        self.stopwatch.start()
         self.controller.process_input(text)
 
     def on_response_received(self, response_text, status_type):
@@ -216,6 +234,8 @@ class MainWindow:
 
     def _update_ui_after_response(self, text, status_type):
         if status_type == "stream":
+            # self.stopwatch.start()
+
             # Just append the raw chunk text to the end of the line
             self.textbox.configure(state="normal")
             self.textbox.insert(tk.END, text, "ai")
@@ -226,6 +246,8 @@ class MainWindow:
             self.status_label.config(text="Generating...")
 
         elif status_type == "finished":
+            self.stopwatch.stop()
+
             # Add a final newline to prepare for the next turn
             self.textbox.configure(state="normal")
             self.textbox.insert(tk.END, "\n\n")

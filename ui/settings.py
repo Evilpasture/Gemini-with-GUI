@@ -113,7 +113,7 @@ class PreferencesWindow(tk.Toplevel):
             tk.messagebox.showerror("Error", f"Unknown error. {e}")
             confirm = False
         if confirm:
-            self.on_save_callback(reset_default = True)
+            self.on_save_callback()
             self.destroy()
         else:
             self.reset_default.config(state="normal")

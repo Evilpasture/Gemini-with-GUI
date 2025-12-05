@@ -23,33 +23,47 @@ class MarkdownText(tk.Text):
         info = self.font_info
         base_family = info["family"]
         base_size = info["size"]
-        s = abs(base_size)  # Absolute size
+        s = abs(base_size)
 
-        # Markdown Fonts
+        # --- Font Definitions ---
+        # We need a specific font for Bold+Italic combined
+        bold_italic_font = tkfont.Font(family=base_family, size=s, weight="bold", slant="italic")
+        bold_font = tkfont.Font(family=base_family, size=s, weight="bold")
+        italic_font = tkfont.Font(family=base_family, size=s, slant="italic")
+
+        # Code block font (usually slightly smaller or different family)
+        code_font = tkfont.Font(family="Consolas", size=s)
+
+        # Header fonts
         h1_font = tkfont.Font(family=base_family, size=int(s * 1.6), weight="bold")
         h2_font = tkfont.Font(family=base_family, size=int(s * 1.4), weight="bold")
         h3_font = tkfont.Font(family=base_family, size=int(s * 1.2), weight="bold")
-        bold_font = tkfont.Font(family=base_family, size=s, weight="bold")
-        italic_font = tkfont.Font(family=base_family, size=s, slant="italic")
-        code_font = tkfont.Font(family="Courier New", size=s)
 
-        # Standard Markdown configurations
+        # --- Tag Configurations ---
         self.tag_config("h1", font=h1_font, spacing3=10)
         self.tag_config("h2", font=h2_font, spacing3=5)
         self.tag_config("h3", font=h3_font, spacing3=2)
+
+        self.tag_config("bold_italic", font=bold_italic_font)
         self.tag_config("bold", font=bold_font)
         self.tag_config("italic", font=italic_font)
-        self.tag_config("code", font=code_font, background="#e0e0e0", foreground="#d63384")
+
+        # Inline code (`text`)
+        self.tag_config("code", font=code_font, background="#e6e6e6", foreground="#d63384")
+
+        # Multi-line code block (```)
+        # We add 'spacing1' and 'spacing3' to give the block some breathing room
+        self.tag_config("codeblock", font=code_font, background="#f0f0f0", foreground="#333333")
+
         self.tag_config("bullet", lmargin1=20, lmargin2=30)
         self.tag_config("hidden", elide=True)
 
     def _raise_markdown_tags(self):
-        """
-        Crucial: Raises Markdown tags above external tags (like 'user', 'system').
-        This ensures bold/colors show up on top of message bubble colors.
-        """
-        priority_tags = ["hidden", "code", "bold", "italic", "h1", "h2", "h3", "bullet"]
-        for tag in priority_tags:
+        # The order matters here!
+        # "hidden" must be on top to hide delimiters.
+        # "codeblock" protects text from having bold/italic applied inside it.
+        priorities = ["hidden", "code", "codeblock", "bold_italic", "bold", "italic", "h1", "h2", "bullet"]
+        for tag in priorities:
             self.tag_raise(tag)
 
     def load_markdown(self, md_text, tags=None):
@@ -65,12 +79,28 @@ class MarkdownText(tk.Text):
         else:
             extra_tags = tuple(tags)
 
-        # Record start position of THIS append operation
         start_index = self.index("end-1c")
 
         lines = md_text.split("\n")
 
+        # --- PHASE 1: LINE PARSING (State Machine) ---
+        in_code_block = False
+
         for line in lines:
+            # Handle Code Block Toggles (```)
+            if line.strip().startswith("```"):
+                in_code_block = not in_code_block
+                # We insert the fence, but we will hide it later if you prefer,
+                # or just leave it to show boundaries. Let's tag it hidden.
+                self.insert("end", line + "\n", ("hidden",) + extra_tags)
+                continue
+
+            # If inside a code block, insert literally and skip markdown checks
+            if in_code_block:
+                self.insert("end", line + "\n", ("codeblock",) + extra_tags)
+                continue
+
+            # --- Normal Markdown Parsing ---
             md_tag = None
             content = line
 
@@ -87,30 +117,27 @@ class MarkdownText(tk.Text):
                 md_tag = "bullet"
                 content = "\u2022 " + line.strip()[2:]
 
-            if md_tag:
-                combined_tags = (md_tag,) + extra_tags
-            else:
-                combined_tags = extra_tags
-
-            self.insert("end", content + "\n", combined_tags)
+            combined = (md_tag,) + extra_tags if md_tag else extra_tags
+            self.insert("end", content + "\n", combined)
 
         end_index = self.index("end-1c")
 
-        # --- FIXED REGEX SECTION ---
-        # We rely on Order of Operations.
-        # Tcl's search skips "hidden" text. So if we hide Code and Bold syntax first,
-        # the Italic search won't see the bold '**' markers.
+        # --- PHASE 2: INLINE REGEX ---
+        # We apply this ONLY to text that is NOT a code block.
+        # However, tk regex search is global.
+        # The trick: The "codeblock" tag is raised above bold/italic in _raise_markdown_tags.
+        # Even if we accidentally tag inside the codeblock, the codeblock font will win visually.
 
-        # 1. Code: `text`
+        # 1. Inline Code `text`
         self._apply_regex_styling(r"`(.*?)`", "code", start_index, end_index)
 
-        # 2. Bold: **text**
-        # We process this BEFORE italic. The ** markers get hidden here.
+        # 2. Bold+Italic ***text*** (Must be before Bold or Italic)
+        self._apply_regex_styling(r"\*\*\*(.*?)\*\*\*", "bold_italic", start_index, end_index)
+
+        # 3. Bold **text**
         self._apply_regex_styling(r"\*\*(.*?)\*\*", "bold", start_index, end_index)
 
-        # 3. Italic: *text*
-        # Because ** was hidden in step 2, this simple regex is now safe.
-        # It won't accidentally match the halves of a bold tag.
+        # 4. Italic *text*
         self._apply_regex_styling(r"\*(.*?)\*", "italic", start_index, end_index)
 
         self._raise_markdown_tags()
@@ -122,17 +149,16 @@ class MarkdownText(tk.Text):
         current_index = start_index
 
         while True:
-            # Search strictly within the new text block
             pos = self.search(pattern, current_index, stopindex=limit_index, count=count, regexp=True)
-            if not pos:
-                break
+            if not pos: break
 
             match_len = count.get()
-            # Calculate the end of the match based on count
             end_match = f"{pos}+{match_len}c"
 
             # Determine delimiter length
-            if tag == "bold":
+            if tag == "bold_italic":
+                d_len = 3
+            elif tag == "bold":
                 d_len = 2
             elif tag == "italic":
                 d_len = 1
@@ -144,12 +170,16 @@ class MarkdownText(tk.Text):
             # Tag the inner content
             inner_start = f"{pos}+{d_len}c"
             inner_end = f"{end_match}-{d_len}c"
-            self.tag_add(tag, inner_start, inner_end)
 
-            # Hide delimiters (make them invisible)
-            if d_len > 0:
-                self.tag_add("hidden", pos, inner_start)
-                self.tag_add("hidden", inner_end, end_match)
+            # CHECK: Don't apply formatting if we are inside a code block!
+            # We look at the tags present at the start of the match.
+            current_tags = self.tag_names(pos)
+            if "codeblock" not in current_tags:
+                self.tag_add(tag, inner_start, inner_end)
 
-            # Move search forward to the end of this match
+                # Hide delimiters
+                if d_len > 0:
+                    self.tag_add("hidden", pos, inner_start)
+                    self.tag_add("hidden", inner_end, end_match)
+
             current_index = end_match

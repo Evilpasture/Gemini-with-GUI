@@ -59,12 +59,13 @@ class App:
         self.config_manager = ConfigManager()
         self.current_settings = self.config_manager.get_settings()
         self.safety_settings = self.config_manager.get_safety_settings()
+        self.debug_settings = self.config_manager.get_debug_settings()
 
         self.api_key = API_KEY
 
         self.dynamic_models = []
 
-        self.gui = MainWindow(self.root, self, self.current_settings, dynamic_models=self.dynamic_models)
+        self.gui = MainWindow(self.root, self, self.current_settings, dynamic_models=self.dynamic_models, debug_settings=self.debug_settings)
 
         if not self.api_key:
             key = self.check_api(self.root)
@@ -98,10 +99,11 @@ class App:
 
 
         self.chat_manager = ChatManager(
-            client=self.client,
-            response_callback=self.gui.on_response_received,
+            self.client,
+            self.gui.on_response_received,
             settings=self.current_settings,
-            safety_settings=self.safety_settings
+            safety_settings=self.safety_settings,
+            debug_settings=self.debug_settings
         )
 
     @staticmethod
@@ -139,8 +141,13 @@ class App:
         self.config_manager.load_config()
         self.current_settings = self.config_manager.get_settings()
         self.safety_settings = self.config_manager.get_safety_settings()
+        self.debug_settings = self.config_manager.get_debug_settings()
         self.gui.update_settings(self.current_settings)
-        self.chat_manager.update_settings(self.current_settings, self.safety_settings)
+        self.chat_manager.update_settings(
+            new_settings=self.current_settings,
+            new_safety=self.safety_settings,
+            new_debug=self.debug_settings
+        )
 
     def restart_chat(self):
         self.gui.clear_text()

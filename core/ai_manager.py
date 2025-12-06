@@ -2,96 +2,124 @@ import threading
 import json
 from google.genai import types, errors
 
+
 class ChatManager:
-    def __init__(self, client, response_callback, settings, safety_settings):
+    def __init__(self, client, response_callback, settings, safety_settings, debug_settings):
         self.client = client
-        self.response_callback = response_callback # Function to call when AI replies
+        self.response_callback = response_callback  # Function to call when AI replies
+
+        # Store settings directly
         self.settings = settings
         self.safety_settings = safety_settings
+        self.debug_settings = debug_settings
+
         self.chat = None
+        # Initialize the chat immediately
         self.init_chat()
 
-    def update_settings(self, new_settings, new_safety):
+    def update_settings(self, new_settings, new_safety, new_debug):
+        """Updates settings and re-initializes the chat session while preserving history."""
         current_history = None
         if self.chat:
             try:
+                # Attempt to save current context before reloading
                 current_history = self.chat.get_history()
             except Exception as e:
-                print(f"Chat Init Error: {e}")
+                print(f"History preservation failed during update: {e}")
                 current_history = []
 
         self.settings = new_settings
         self.safety_settings = new_safety
+        self.debug_settings = new_debug
 
-        # Note: Changing settings will reinitialize chat with current history
         self.init_chat(history=current_history)
 
     def init_chat(self, history=None):
         try:
-            persona = f"At this present, you are talking to {self.settings['user_name']}. "
+            markup_style = self.debug_settings.get('markup_language', 'AsciiDoc')
+
+            if markup_style == "Markdown":
+                markup_instruction = ""
+            else:
+                markup_instruction = (
+                    f"\n[SYSTEM: Please use {markup_style} formatting "
+                    f"instead of Markdown for code blocks and headers.]"
+                )
+
+            persona = f"You are talking to {self.settings.get('user_name', 'User')}."
+            full_instruction = f"{self.settings.get('instruction', '')}\n{persona}{markup_instruction}"
+
             config = types.GenerateContentConfig(
-                system_instruction=f"{self.settings['instruction']}\n{persona}",
-                temperature=self.settings['temperature'],
+                system_instruction=full_instruction,
+                temperature=float(self.settings.get('temperature', 0.7)),
                 safety_settings=self.safety_settings
             )
+
             self.chat = self.client.chats.create(
-                model=self.settings['model_name'],
+                model=self.settings.get('model_name', 'gemini-1.5-flash'),
                 config=config,
                 history=history
             )
         except Exception as e:
-            print(f"Chat Init Error: {e}")
-            self.response_callback(f"System Error: Failed to initialize model.", True)
+            print(f"Chat Initialization Error: {e}")
+            # Send error as "error" string, not boolean True
+            self.response_callback(f"System Error: Failed to initialize model.\n{e}", "error")
 
     def process_input(self, user_text):
-        """Starts the API call in a separate thread"""
+        """Starts the API call in a separate thread."""
+        if not user_text.strip():
+            return
+
         thread = threading.Thread(target=self._run_api_call, args=(user_text,))
         thread.daemon = True
         thread.start()
 
     def _run_api_call(self, text):
         if not self.chat:
-            self.response_callback("Chat session not initialized.", True)
+            self.response_callback("Chat session not initialized.", "error")
             return
-        # self.handle_safety()
+
         try:
+            # Send stream request
             response_stream = self.chat.send_message_stream(text)
 
             for chunk in response_stream:
                 if chunk.text:
-                    # Send partial chunks to GUI
-                    # Note: You need to update your callback to handle "append" vs "finished"
                     self.response_callback(chunk.text, "stream")
 
-            self.response_callback(None, "finished")  # Signal done
-        except errors.APIError as e:
-            self.response_callback(f"API Error {e.code}: {e.message}", True)
-        except Exception as e:
-            self.response_callback(f"Error: {str(e)}", True)
+            self.response_callback(None, "finished")
 
-    def handle_safety(self, reason, original_prompt):
-        # not very urgent right now, you can always relax the filters.
-        # the only problem is when you wrote a long prompt, but you didn't receive a response, thus wasting input token.
-        print(reason)
-        new_prompt = original_prompt
-        return new_prompt
+        except errors.APIError as e:
+            # Handle API-specific errors (400, 403, etc.)
+            self.response_callback(f"API Error {e.code}: {e.message}", "error")
+        except Exception as e:
+            # Handle connection or unknown errors
+            self.response_callback(f"Unexpected Error: {str(e)}", "error")
 
     def save_history(self, filepath):
         if not self.chat:
             return "Error: No active chat.", False
         try:
-            history_list = [types.Content.model_dump(h, exclude_none=True) for h in self.chat.get_history()]
-            with open(filepath, 'w') as f:
-                json.dump(history_list, f, indent=4)
+            # Dump history to a list of dicts
+            history_list = [
+                types.Content.model_dump(h, exclude_none=True)
+                for h in self.chat.get_history()
+            ]
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(history_list, f, indent=4, ensure_ascii=False)
             return f"Saved to {filepath}", True
         except Exception as e:
             return f"Save Error: {e}", False
 
     def load_history(self, filepath):
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath, 'r', encoding='utf-8') as f:
                 history_data = json.load(f)
+
+            # Reconstruct types.Content objects
             loaded_history = [types.Content(**d) for d in history_data]
+
+            # Re-init chat with new history
             self.init_chat(history=loaded_history)
             return loaded_history, f"Loaded from {filepath}", True
         except Exception as e:

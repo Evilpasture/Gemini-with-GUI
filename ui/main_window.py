@@ -1,16 +1,40 @@
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import ttk
 from .settings import PreferencesWindow
-try:
-    from util.time_logic import Stopwatch
-    HAS_STOPWATCH = True
-except ImportError:
-    try:
-        from time_logic import Stopwatch
-        HAS_STOPWATCH = True
-    except ImportError:
-        print("time_logic.py not found, but module is optional.")
-        HAS_STOPWATCH = False
+
+def safe_import(module_name, paths):
+    """
+    Attempts to import a module's class/object from a list of possible paths.
+
+    :param module_name: The name of the class/object to assign.
+    :param paths: A list of full import strings.
+    :return: The imported class/object, or None if import fails.
+    """
+    for path in paths:
+        try:
+            # Dynamically import the module
+            module = __import__(path, fromlist=[module_name])
+            # Return the specific class/object from the imported module
+            return getattr(module, module_name)
+        except ImportError:
+            continue  # Try the next path
+
+    print(f"{module_name} not found, but module is optional.")
+    return None
+
+
+Stopwatch = safe_import("Stopwatch", ['util.time_logic', 'time_logic'])
+HAS_STOPWATCH = Stopwatch is not None
+
+MarkdownText = safe_import("MarkdownText", ['util.markdown_parser', 'markdown_parser'])
+HAS_MARKDOWN = MarkdownText is not None
+
+AsciiDocText = safe_import("AsciiDocText", ['util.asciidoc_parser', 'asciidoc_parser'])
+HAS_ASCIIDOC = AsciiDocText is not None
+
+ReSTText = safe_import("ReSTText", ['util.rest_parser', 'rest_parser'])
+HAS_REST = ReSTText is not None
 
 # Enhanced palettes... but I won't add dark mode, it's bloody hard.
 THEME_ACCENTS = {
@@ -43,10 +67,11 @@ THEME_ACCENTS = {
 
 
 class MainWindow:
-    def __init__(self, root, controller, settings, dynamic_models):
+    def __init__(self, root, controller, settings, debug_settings, dynamic_models):
         self.root = root
         self.controller = controller
         self.settings = settings
+        self.debug_settings = debug_settings
         self.dynamic_models = dynamic_models
 
         self.root.geometry("850x650")
@@ -60,7 +85,7 @@ class MainWindow:
             self.root.set_theme('arc')
 
         self.update_title()
-        self.font_spec = (self.settings['font_name'], self.settings['font_size'])
+        self.font_spec = tkfont.Font(family=self.settings['font_name'], size=self.settings['font_size'])
 
         self._build_menu()
         self._build_layout()
@@ -103,16 +128,64 @@ class MainWindow:
         scrollbar = ttk.Scrollbar(self.text_frame)
         scrollbar.pack(side="right", fill="y")
 
-        self.textbox = tk.Text(
-            self.text_frame,
-            height=20, width=50,
-            state="disabled", wrap="word",
-            yscrollcommand=scrollbar.set, font=self.font_spec,
-            bg="#ffffff", fg="#333333",
-            bd=1, relief="solid", padx=15, pady=15,
-            highlightthickness=0,
-            undo=True
-        )
+        markup_language = self.debug_settings.get('markup_language')
+
+        def _set_text():
+            _config_args = {
+                "height": 20,
+                "width": 50,
+                "state": "disabled",
+                "wrap": "word",
+                "yscrollcommand": scrollbar.set,
+                "font": self.font_spec,
+                "bg": "#ffffff",
+                "fg": "#333333",
+                "bd": 1,
+                "relief": "solid",
+                "padx": 15,
+                "pady": 15,
+                "highlightthickness": 0,
+                "undo": True
+            }
+            return _config_args
+        config_args = _set_text()
+
+        class StandardText(tk.Text):
+            """Fallback if parsers are missing or disabled."""
+
+            def load_markup(self, text, tags=None):
+                self.configure(state="normal")
+                # Ensure tags is a tuple
+                if tags:
+                    if isinstance(tags, str):
+                        tags = (tags,)
+                else:
+                    tags = ()
+
+                self.insert("end", text, tags)
+                self.configure(state="disabled")
+
+        if HAS_MARKDOWN and markup_language == "Markdown":
+            self.textbox = MarkdownText(
+                self.text_frame,
+                **config_args
+            )
+        elif HAS_ASCIIDOC and markup_language == "AsciiDoc":
+            self.textbox = AsciiDocText(
+                self.text_frame,
+                **config_args
+            )
+        elif HAS_REST and markup_language == "reStructuredText":
+            self.textbox = ReSTText(
+                self.text_frame,
+                **config_args
+            )
+        else:
+            self.textbox = StandardText(
+                self.text_frame,
+                **config_args
+            )
+
         self.textbox.pack(side="left", fill="both", expand=True)
         self.textbox.edit_modified(False)
         scrollbar.config(command=self.textbox.yview)
@@ -128,22 +201,33 @@ class MainWindow:
         self.btn_send = ttk.Button(input_frame, text="Send Message", command=self.handle_submit)
         self.btn_send.pack(side="right")
 
-        self.time_label = ttk.Label(main_frame, text="00:00.00", font=("Arial", 9), foreground="gray")
-        self.time_label.pack(side="bottom", anchor="w", )
+        if HAS_STOPWATCH:
+            self.time_label = ttk.Label(main_frame, text="00:00.00", font=("Arial", 9), foreground="gray")
+            self.time_label.pack(side="bottom", anchor="w", )
+            self.stopwatch = Stopwatch(self.root, self.time_label)
+
+
 
         self.status_label = ttk.Label(main_frame, text="Ready", font=("Arial", 9), foreground="gray")
         self.status_label.pack(side="bottom", anchor="w", pady=(5, 0))
 
         self._configure_tags("#0056b3")
 
-        if HAS_STOPWATCH:
-            self.stopwatch = Stopwatch(self.root, self.time_label)
 
     def _configure_tags(self, theme_color):
+        user_font_styled = self.font_spec.copy()
+        user_font_styled.configure(weight="bold")
+
+        system_font_styled = self.font_spec.copy()
+        system_font_styled.configure(
+            size=self.font_spec.cget("size") - 1,
+            slant="italic"
+        )
+
         tag_map = {
             "user": {
                 "foreground": theme_color,
-                "font": (self.font_spec[0], self.font_spec[1], "bold")
+                "font": user_font_styled
             },
             "ai": {
                 "foreground": "#28a745",
@@ -155,7 +239,7 @@ class MainWindow:
             },
             "system": {
                 "foreground": "#6c757d",
-                "font": (self.font_spec[0], int(self.font_spec[1]) - 1, "italic")
+                "font": system_font_styled
             }
         }
 
@@ -201,7 +285,7 @@ class MainWindow:
     # This manages the theme update.
     def update_settings(self, new_settings):
         self.settings = new_settings
-        self.font_spec = (self.settings['font_name'], self.settings['font_size'])
+        self.font_spec = tkfont.Font(family=self.settings['font_name'], size=self.settings['font_size'])
         self.textbox.configure(font=self.font_spec)
         self.entry.configure(font=self.font_spec)
 
@@ -238,12 +322,13 @@ class MainWindow:
 
         bot_name = self.settings['chatbot_name']
         self.textbox.configure(state="normal")
-        self.textbox.insert(tk.END, f"{bot_name}: ", "ai")  # No newline yet
+        self.textbox.load_markup(f"{bot_name}: ", "ai")  # No newline yet
         self.textbox.configure(state="disabled")
 
         self.status_label.config(text="Thinking...")
-        self.stopwatch.reset()
-        self.stopwatch.start()
+        if HAS_STOPWATCH:
+            self.stopwatch.reset()
+            self.stopwatch.start()
         self.controller.process_input(text)
 
     def on_response_received(self, response_text, status_type):
@@ -255,7 +340,7 @@ class MainWindow:
 
             # Just append the raw chunk text to the end of the line
             self.textbox.configure(state="normal")
-            self.textbox.insert(tk.END, text, "ai")
+            self.textbox.load_markup(text, "ai")
             self.textbox.see(tk.END)  # Auto-scroll
             self.textbox.configure(state="disabled")
 
@@ -263,11 +348,12 @@ class MainWindow:
             self.status_label.config(text="Generating...")
 
         elif status_type == "finished":
-            self.stopwatch.stop()
+            if HAS_STOPWATCH:
+                self.stopwatch.stop()
 
             # Add a final newline to prepare for the next turn
             self.textbox.configure(state="normal")
-            self.textbox.insert(tk.END, "\n\n")
+            self.textbox.load_markup("\n\n")
             self.textbox.configure(state="disabled")
             self.textbox.see(tk.END)
 
@@ -280,7 +366,7 @@ class MainWindow:
         elif status_type == "error":
             # If an error happens, print it on a new line
             self.textbox.configure(state="normal")
-            self.textbox.insert(tk.END, f"\nError: {text}\n\n", "error")
+            self.textbox.load_markup(f"\nError: {text}\n\n", "error")
             self.textbox.configure(state="disabled")
 
             # Re-enable controls
@@ -292,9 +378,9 @@ class MainWindow:
         self.textbox.configure(state="normal")
 
         if self.textbox.get("end-2c", "end-1c") != "\n":
-            self.textbox.insert(tk.END, "\n")
+            self.textbox.load_markup("\n")
 
-        self.textbox.insert(tk.END, text + "\n\n", tag)  # Add extra spacing
+        self.textbox.load_markup(text + "\n\n", tag)  # Add extra spacing
 
         if tag == "system":
             self.textbox.edit_modified(False)

@@ -66,7 +66,7 @@ class MarkdownText(tk.Text):
         for tag in priorities:
             self.tag_raise(tag)
 
-    def load_markdown(self, md_text, tags=None):
+    def load_markup(self, md_text, tags=None):
         """
         Parses markdown and appends it to the widget.
         """

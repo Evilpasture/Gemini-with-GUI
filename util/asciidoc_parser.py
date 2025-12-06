@@ -72,7 +72,7 @@ class AsciiDocText(tk.Text):
         for tag in priorities:
             self.tag_raise(tag)
 
-    def load_asciidoc(self, doc_text, tags=None):
+    def load_markup(self, doc_text, tags=None):
         """
         Parses AsciiDoc string and inserts it.
         :param doc_text: The AsciiDoc string.

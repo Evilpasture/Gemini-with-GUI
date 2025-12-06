@@ -1,6 +1,217 @@
 import tkinter as tk
 import tkinter.font as tkfont
-import re
+from docutils.core import publish_string
+from docutils.writers import Writer
+from docutils.nodes import NodeVisitor, SkipNode
+
+
+class TkVisitor(NodeVisitor):
+    def __init__(self, document, text_widget, base_tags=()):
+        super().__init__(document)
+        self.widget = text_widget
+
+        # Handle single tag string vs tuple of tags
+        if base_tags is None:
+            self.base_tags = ()
+        elif isinstance(base_tags, str):
+            self.base_tags = (base_tags,)
+        else:
+            self.base_tags = tuple(base_tags)
+
+        self.section_level = 0
+        self.current_tags = []
+
+        # STATE TRACKING (Crucial for wrapping fix)
+        self.in_literal_block = False
+
+    # --- Helpers ---
+    def _insert(self, text, extra_tags=()):
+        """Central insertion method to combine formatting + base tags."""
+        # Order: Base Tags (bottom) -> Current Structure (middle) -> Specific Extra (top)
+        # Note: Visual priority is handled by _raise_tags(), not tuple order.
+        combined_tags = tuple(self.current_tags) + extra_tags + self.base_tags
+        self.widget.insert("end", text, combined_tags)
+
+    # --- Core Text ---
+    def visit_Text(self, node):
+        text = node.astext()
+
+        # If we are NOT in a code block, replace source-code newlines with spaces.
+        # This allows Tkinter to calculate line wrapping dynamically based on width.
+        if not self.in_literal_block:
+            text = text.replace("\n", " ")
+
+        self._insert(text)
+
+    def depart_Text(self, node):
+        pass
+
+    # --- Structure (Paragraphs) ---
+    def visit_paragraph(self, node):
+        pass
+
+    def depart_paragraph(self, node):
+        # Only double-space if we are NOT inside a tight container (like a list or field)
+        # But for chat, double-spacing usually looks cleaner.
+        self._insert("\n\n")
+
+    def visit_section(self, node):
+        self.section_level += 1
+
+    def depart_section(self, node):
+        self.section_level -= 1
+
+    # --- Headers (Titles) ---
+    def visit_title(self, node):
+        # We handle headers, but we don't make them MASSIVE.
+        # Just bold and distinct.
+        if self.section_level == 1:
+            self.current_tags.append("h1")
+        elif self.section_level == 2:
+            self.current_tags.append("h2")
+        else:
+            self.current_tags.append("h3")
+
+    def depart_title(self, node):
+        self.current_tags.pop()
+        self._insert("\n")
+
+    # --- Inline Formatting ---
+    def visit_strong(self, node):
+        self.current_tags.append("strong")
+
+    def depart_strong(self, node):
+        self.current_tags.pop()
+
+    def visit_emphasis(self, node):
+        self.current_tags.append("emphasis")
+
+    def depart_emphasis(self, node):
+        self.current_tags.pop()
+
+    def visit_literal(self, node):
+        self.current_tags.append("literal")
+
+    def depart_literal(self, node):
+        self.current_tags.pop()
+
+    def visit_reference(self, node):
+        self.current_tags.append("link")
+
+    def depart_reference(self, node):
+        self.current_tags.pop()
+
+    # --- Code Blocks ---
+    def visit_literal_block(self, node):
+        self.in_literal_block = True
+        self.current_tags.append("literal_block")
+        # Ensure distinct line start
+        if not self.widget.get("end-2c") == "\n":
+            self._insert("\n")
+
+    def depart_literal_block(self, node):
+        self.in_literal_block = False
+        self.current_tags.pop()
+        self._insert("\n")
+
+    # --- Lists ---
+    def visit_bullet_list(self, node):
+        pass
+
+    def depart_bullet_list(self, node):
+        pass
+
+    def visit_enumerated_list(self, node):
+        pass
+
+    def depart_enumerated_list(self, node):
+        pass
+
+    def visit_list_item(self, node):
+        self._insert("\u2022 ", ("bullet",))
+
+    def depart_list_item(self, node):
+        pass
+
+    # --- SPECIAL HANDLING: Field Lists (The "User: Hello" Bug) ---
+    # Docutils treats "User: Hello" as a metadata field.
+    # We strip the "metadata" formatting and print it as normal text.
+    def visit_field_list(self, node):
+        pass
+
+    def depart_field_list(self, node):
+        pass
+
+    def visit_field(self, node):
+        pass
+
+    def depart_field(self, node):
+        self._insert("\n")
+
+    def visit_field_name(self, node):
+        # Print "Name:" in bold, but inline
+        self.current_tags.append("strong")
+        self._insert(node.astext())
+        self.current_tags.pop()
+        self._insert(": ")
+        raise SkipNode  # Skip standard children processing to avoid double print
+
+    def visit_field_body(self, node):
+        # Just visit children (the text) normally
+        pass
+
+    def depart_field_body(self, node):
+        pass
+
+    # --- Admonitions (Notes, etc) ---
+    def visit_admonition(self, node, name=""):
+        self.current_tags.append("directive")
+        title = name.upper() if name else "NOTE"
+        self._insert(f"\n{title}: \n", ("strong",))
+
+    def depart_admonition(self, node):
+        self.current_tags.pop()
+        self._insert("\n")
+
+    def visit_note(self, node):
+        self.visit_admonition(node, "Note")
+
+    def depart_note(self, node):
+        self.depart_admonition(node)
+
+    def visit_warning(self, node):
+        self.visit_admonition(node, "Warning")
+
+    def depart_warning(self, node):
+        self.depart_admonition(node)
+
+    # --- System Messages (Errors) ---
+    def visit_system_message(self, node):
+        # HIDE errors from the user view.
+        # "Normal literature" shouldn't scream XML errors.
+        raise SkipNode
+
+    def depart_system_message(self, node):
+        pass
+
+    # --- Catch All ---
+    def unknown_visit(self, node):
+        # Pass through unknown nodes so we see their text content
+        pass
+
+    def unknown_departure(self, node):
+        pass
+
+
+class TkWriter(Writer):
+    def __init__(self, text_widget, base_tags=()):
+        super().__init__()
+        self.widget = text_widget
+        self.base_tags = base_tags
+
+    def translate(self):
+        visitor = TkVisitor(self.document, self.widget, self.base_tags)
+        self.document.walkabout(visitor)
 
 
 class ReSTText(tk.Text):
@@ -20,198 +231,78 @@ class ReSTText(tk.Text):
         }
 
     def _configure_styles(self):
-        """Defines the fonts and colors for reStructuredText elements."""
+        # Fonts
         info = self.font_info
-        base_family = info["family"]
-        base_size = info["size"]
-        s = abs(base_size)
+        family = info.get("family") if info.get("family") in tkfont.families() else "Helvetica"
+        _s = info.get("size")
+        size = abs(_s)
 
-        # --- Fonts ---
-        h1_font = tkfont.Font(family=base_family, size=int(s * 1.6), weight="bold")
-        h2_font = tkfont.Font(family=base_family, size=int(s * 1.4), weight="bold")
-        h3_font = tkfont.Font(family=base_family, size=int(s * 1.2), weight="bold")
+        # Headers (Scaled down to fit chat)
+        self.tag_config("h1", font=(family, int(size * 1.3), "bold"), spacing3=5)
+        self.tag_config("h2", font=(family, int(size * 1.15), "bold"), spacing3=5)
+        self.tag_config("h3", font=(family, size, "bold"), spacing3=2)
 
-        bold_font = tkfont.Font(family=base_family, size=s, weight="bold")
-        italic_font = tkfont.Font(family=base_family, size=s, slant="italic")
-        mono_font = tkfont.Font(family="Consolas", size=s)
+        # Inline
+        self.tag_config("strong", font=(family, size, "bold"))
+        self.tag_config("emphasis", font=(family, size, "italic"))
+        self.tag_config("link", foreground="blue", underline=True)
 
-        # --- Tag Configs ---
-        self.tag_config("h1", font=h1_font, spacing3=10, foreground="#222222")
-        self.tag_config("h2", font=h2_font, spacing3=8, foreground="#333333")
-        self.tag_config("h3", font=h3_font, spacing3=5, foreground="#444444")
+        # Code
+        self.tag_config("literal", font=("Consolas", size), background="#E0E0E0")
+        self.tag_config("literal_block", font=("Consolas", size), background="#F5F5F5", lmargin1=15)
 
-        self.tag_config("strong", font=bold_font)  # **bold**
-        self.tag_config("emphasis", font=italic_font)  # *italic*
-
-        # Inline literals: ``text``
-        self.tag_config("literal", font=mono_font, background="#f4f4f4", foreground="#d63384")
-
-        # Code Blocks (:: or .. code::)
-        self.tag_config("literal_block", font=mono_font, background="#f0f0f0", foreground="#333333", lmargin1=20)
-
-        # Directives/Admonitions (.. note::)
-        self.tag_config("directive", font=bold_font, foreground="#2c3e50", background="#e8f4f8")
-
-        # Field lists (:Field:)
-        self.tag_config("field_name", font=bold_font, foreground="#0056b3")
-
+        # Structure
+        self.tag_config("directive", background="#E1F5FE", lmargin1=10)
         self.tag_config("bullet", lmargin1=20, lmargin2=30)
-        self.tag_config("hidden", elide=True)
 
     def _raise_tags(self):
-        """Ensures formatting sits on top of text."""
-        # 'hidden' top priority to hide syntax.
-        # 'literal_block' protects code from inline regex.
-        priorities = ["hidden", "literal", "literal_block", "strong", "emphasis",
-                      "h1", "h2", "h3", "directive", "field_name", "bullet"]
-        for tag in priorities:
-            self.tag_raise(tag)
+        """
+        Layering Strategy:
+        Bottom: Base Tags (User/System Colors)
+        Middle: Block Styles (Code backgrounds)
+        Top:    Inline Styles (Bold/Links)
+        """
+        # 1. Base Structure
+        self.tag_raise("bullet")
+        self.tag_raise("directive")
 
-    def load_markup(self, doc_text, tags=None):
-        """
-        Parses reStructuredText string and inserts it.
-        """
+        # 2. Blocks
+        self.tag_raise("literal_block")
+
+        # 3. Headers
+        self.tag_raise("h3")
+        self.tag_raise("h2")
+        self.tag_raise("h1")
+
+        # 4. Inline (Highest Priority)
+        self.tag_raise("strong")
+        self.tag_raise("emphasis")
+        self.tag_raise("literal")
+        self.tag_raise("link")
+
+        # 5. Selection
+        self.tag_raise("sel")
+
+    def load_markup(self, source_text, tags=None):
         self.configure(state="normal")
 
-        if tags is None:
-            extra_tags = ()
-        elif isinstance(tags, str):
-            extra_tags = (tags,)
-        else:
-            extra_tags = tuple(tags)
+        # Optional: Add double newlines to make "chat" text behave like paragraphs
+        # This fixes "Hi\nThere" becoming "Hi There"
+        # formatted_text = source_text.replace("\n", "\n\n")
 
-        start_index = self.index("end-1c")
-        lines = doc_text.split("\n")
+        writer = TkWriter(self, base_tags=tags)
 
-        # State Machine Flags
-        in_literal_block = False
-        literal_indent_level = 0
-
-        # Helper to detect header underlines
-        def is_underline(line_text, char):
-            return line_text.strip().startswith(char * 3) and len(line_text.strip()) == line_text.count(char)
-
-        for i, line in enumerate(lines):
-            stripped = line.strip()
-            current_tags = list(extra_tags)
-
-            # 1. Handle Literal Blocks (Indentation based)
-            # ReST blocks often start after '::'
-            if in_literal_block:
-                # Check indentation (simple heuristic: if line is empty or starts with space)
-                # If line is not empty and has NO indentation, block ends.
-                if stripped and not (line.startswith(" ") or line.startswith("\t")):
-                    in_literal_block = False
-                else:
-                    self.insert("end", line + "\n", ("literal_block",) + extra_tags)
-                    continue
-
-            # Check entry to literal block via '::' at end of previous line (handled loosely)
-            if line.endswith("::") or line.strip() == "::":
-                # We don't hide the :: usually in chat, but we flag next lines
-                in_literal_block = True
-
-            # Check explicit code directive
-            if stripped.startswith(".. code") or stripped.startswith(".. sourcecode"):
-                in_literal_block = True
-                self.insert("end", line + "\n", ("directive",) + extra_tags)
-                continue
-
-            # 2. Section Headers (Underline detection)
-            # If this line is '====', apply H1 to the PREVIOUS line
-            is_header_underline = False
-            header_tag = None
-
-            if is_underline(stripped, "="):
-                header_tag = "h1"
-                is_header_underline = True
-            elif is_underline(stripped, "-"):
-                header_tag = "h2"
-                is_header_underline = True
-            elif is_underline(stripped, "~"):
-                header_tag = "h3"
-                is_header_underline = True
-
-            if is_header_underline:
-                # Go back one line in the widget and apply tag
-                # Note: We must check if there IS a previous line in this batch or widget
-                # 'end-2c' is the end of the line just inserted
-                prev_line_start = self.index("end-2l linestart")
-                prev_line_end = self.index("end-2l lineend")
-
-                # Apply tag to previous line
-                self.tag_add(header_tag, prev_line_start, prev_line_end)
-
-                # Do NOT insert the underline line (hide it)
-                # But to keep line sync, we can insert it as hidden
-                self.insert("end", line + "\n", ("hidden",) + extra_tags)
-                continue
-
-            # 3. Admonitions / Directives (.. note::)
-            if stripped.startswith(".. ") and "::" in stripped:
-                self.insert("end", line + "\n", ("directive",) + extra_tags)
-                continue
-
-            # 4. Bullet Lists (*, -, +)
-            if re.match(r"^(\*|\-|\+)\s+", stripped):
-                current_tags.append("bullet")
-                # Clean up the bullet char for visual niceness
-                content = "\u2022 " + stripped[1:].lstrip()
-                self.insert("end", content + "\n", tuple(current_tags))
-                continue
-
-            # 5. Field Lists (:Name: Value)
-            field_match = re.match(r"^:([a-zA-Z0-9 _-]+):(.*)", stripped)
-            if field_match:
-                # Insert Name
-                self.insert("end", f":{field_match.group(1)}:", ("field_name",) + extra_tags)
-                # Insert Value
-                self.insert("end", f"{field_match.group(2)}\n", extra_tags)
-                continue
-
-            # Standard Insert
-            self.insert("end", line + "\n", tuple(current_tags))
-
-        end_index = self.index("end-1c")
-
-        # --- INLINE REGEX STYLING ---
-
-        # 1. Inline Literal ``text`` (Double backticks in ReST)
-        self._apply_regex(r"``(.*?)``", "literal", start_index, end_index, d_len=2)
-
-        # 2. Strong (Bold) **text**
-        self._apply_regex(r"\*\*(.*?)\*\*", "strong", start_index, end_index, d_len=2)
-
-        # 3. Emphasis (Italic) *text*
-        # ReST is strict about spaces around single asterisks, but we'll be loose for chat
-        self._apply_regex(r"\*(.*?)\*", "emphasis", start_index, end_index, d_len=1)
+        try:
+            # report_level=5 suppresses console warnings
+            publish_string(
+                source=source_text,
+                writer=writer,
+                settings_overrides={'report_level': 5}
+            )
+        except Exception:
+            # Absolute fallback: If docutils crashes, just insert text
+            err_tags = (tags,) if isinstance(tags, str) and tags else tags
+            self.insert("end", source_text + "\n", err_tags)
 
         self._raise_tags()
         self.configure(state="disabled")
-
-    def _apply_regex(self, pattern, tag, start_index, limit_index, d_len=1):
-        """Applies tags to regex matches, hiding delimiters."""
-        count = tk.IntVar()
-        current_index = start_index
-
-        while True:
-            pos = self.search(pattern, current_index, stopindex=limit_index, count=count, regexp=True)
-            if not pos: break
-
-            match_len = count.get()
-            end_match = f"{pos}+{match_len}c"
-
-            # Check if we are inside a Literal Block (don't style code blocks!)
-            current_tags = self.tag_names(pos)
-            if "literal_block" in current_tags:
-                current_index = end_match
-                continue
-
-            inner_start = f"{pos}+{d_len}c"
-            inner_end = f"{end_match}-{d_len}c"
-
-            self.tag_add(tag, inner_start, inner_end)
-            self.tag_add("hidden", pos, inner_start)
-            self.tag_add("hidden", inner_end, end_match)
-
-            current_index = end_match

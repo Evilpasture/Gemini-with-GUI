@@ -36,6 +36,9 @@ DEFAULT_CONFIG = {
         'DANGEROUS_CONTENT_THRESHOLD': 'BLOCK_MEDIUM_AND_ABOVE',
         'SEXUALLY_EXPLICIT_THRESHOLD': 'BLOCK_MEDIUM_AND_ABOVE',
         'CIVIC_INTEGRITY_THRESHOLD': 'BLOCK_MEDIUM_AND_ABOVE',
+    },
+    'DEBUG_SETTINGS': {
+        'MARKUP_LANGUAGE': 'AsciiDoc'
     }
 }
 
@@ -105,6 +108,11 @@ class ConfigManager:
                                             types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE),
             ),
         ]
+
+    def get_debug_settings(self):
+        return {
+            'markup_language': self.parser.get('DEBUG_SETTINGS', 'MARKUP_LANGUAGE', fallback='AsciiDoc'),
+        }
 
     def get_parser(self):
         """Returns the raw parser object (needed for the Preferences Window)."""

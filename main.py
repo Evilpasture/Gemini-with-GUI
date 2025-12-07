@@ -1,196 +1,168 @@
 import tkinter as tk
 from tkinter import messagebox
+from pathlib import Path
 import os
 import sys
 
+
+# --- Centralized Dependency Check ---
+def check_dependencies():
+    required = {
+        'google.genai': 'google-genai',
+        'dotenv': 'python-dotenv',
+        'ttkthemes': 'ttkthemes'
+    }
+    missing = []
+    for module, pip_name in required.items():
+        try:
+            __import__(module)
+        except ImportError:
+            missing.append(pip_name)
+
+    if missing:
+        # We can't use tk.messagebox easily before root, but simple print/sys.exit is safer here
+        print(f"CRITICAL: Missing libraries: {', '.join(missing)}")
+        print(f"Run: pip install {' '.join(missing)}")
+        sys.exit(1)
+
+
+check_dependencies()
+
+# Imports after check
+from dotenv import load_dotenv
+from google import genai
+from ttkthemes import ThemedTk
+
+# --- Internal Module Setup ---
+SCRIPT_DIR = Path(getattr(sys, 'frozen', False) and sys.executable or __file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.append(str(SCRIPT_DIR))
+
+# Consolidated imports to catch structural errors early
 try:
     from core.config import ConfigManager
     from core.ai_manager import ChatManager
     from ui.main_window import MainWindow
-    from ui.settings import PreferencesWindow
     from ui.dialog import Dialog
-except ImportError:
-    try:
-        from config import ConfigManager
-        from ai_manager import ChatManager
-        from main_window import MainWindow
-        from settings import PreferencesWindow
-        from dialog import Dialog
-    except ImportError as e:
-        tk.messagebox.showerror("Startup Error", f"Critical files missing.\nError: {e}")
-        sys.exit(1)
-
-try:
-    from dotenv import load_dotenv
-    from google import genai
-    from google.genai.errors import APIError
-    from ttkthemes import ThemedTk
 except ImportError as e:
-    tk.messagebox.showerror("Startup Error", f"Missing dependencies.\nError: {e}")
+    # Minimal TK root just to show error
+    r = tk.Tk()
+    r.withdraw()
+    messagebox.showerror("Internal Error", f"Application files missing.\nTrace: {e}")
     sys.exit(1)
 
 load_dotenv()
-API_KEY = os.getenv("GEMINI_API_KEY")
-OUTPUT_DIR_NAME = "chats"
-DEFAULT_FILENAME = "chat.json"
-
-if getattr(sys, 'frozen', False):
-    # Running as a frozen executable
-    SCRIPT_DIR = os.path.dirname(sys.executable)
-else:
-    # Running as a standard Python script
-    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-OUTPUT_PATH = os.path.join(SCRIPT_DIR, OUTPUT_DIR_NAME)
-
-try:
-    os.makedirs(OUTPUT_PATH, exist_ok=True)
-    print(f"Output directory exists at: {OUTPUT_PATH}")
-except OSError as e:
-    print(f"Error creating directory {OUTPUT_PATH}: {e}")
-    # Fallback to the script directory if creation fails
-    OUTPUT_PATH = SCRIPT_DIR
-    print(f"Falling back to script directory: {OUTPUT_PATH}")
+OUTPUT_PATH = SCRIPT_DIR / "chats"
+OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
 
 class App:
-    def __init__(self, root):
-        self.root = root
-
+    def __init__(self, _root):
+        self.root = _root
         self.config_manager = ConfigManager()
-        self.current_settings = self.config_manager.get_settings()
-        self.safety_settings = self.config_manager.get_safety_settings()
 
-        self.api_key = API_KEY
+        # Load settings, just more efficiently because somehow I did call it not efficiently
+        self.settings = self.config_manager.get_settings()
+        self.safety = self.config_manager.get_safety_settings()
 
+        self.api_key = os.getenv("GEMINI_API_KEY")
+
+        # 1. Setup GUI (Pass empty model list first, populate later)
+        self.gui = MainWindow(self.root, self, self.settings)
+
+        # 2. Check API Key
         if not self.api_key:
-            key = self.check_api(self.root)
-            if key is None:
+            self.api_key = self.ask_api_key(self.root)
+            if not self.api_key:
                 sys.exit(0)
+            # Save to env for next time
+            with open(".env", "w") as f:
+                f.write(f"\nGEMINI_API_KEY=\"{self.api_key}\"\n")
 
-            self.api_key = key
-            try:
-                with open(".env", "w") as f:
-                    f.write(f"\nGEMINI_API_KEY=\"{key}\"\n")
-            except OSError as e:
-                print(f"Failed to write .env file: {e}")
-
+        # 3. Init Client & Fetch Models
         try:
             self.client = genai.Client(api_key=self.api_key)
-        except ValueError as e:
-            messagebox.showerror(
-                "Initialization Error",
-                f"API Key Initialization Failed. Check Key Format:\n{e}"
-            )
-            self.root.destroy()
-            return
+            self.populate_models()
         except Exception as e:
-            messagebox.showerror("Error", f"Unexpected error during client setup:\n{e}")
-            self.root.destroy()
-            return
+            messagebox.showerror("Initialization Error", f"Failed to connect to Gemini. Check your internet connections:\n{e}")
+            sys.exit(1)
 
-        self.gui = MainWindow(self.root, self, self.current_settings)
+        # 4. Init Chat Manager
         self.chat_manager = ChatManager(
-            client=self.client,
-            response_callback=self.gui.on_response_received,
-            settings=self.current_settings,
-            safety_settings=self.safety_settings
+            self.client,
+            self.gui.on_response_received,  # Callback
+            self.settings,
+            self.safety
         )
 
-    @staticmethod
-    def check_api(ref_root):
-        while True:
-            key = Dialog.ask_string(
-                parent=ref_root,
-                title="Gemini API Key",
-                prompt="Enter your API Key:",
-                show='*'
-            )
-            if key is None:
-                return None
+    def populate_models(self):
+        # Fetch models dynamically, but it wouldn't screw up the entire program
+        try:
+            dynamic_models = []
+            # Note: Page size config might vary by SDK version, simplified listing:
+            for m in self.client.models.list():
+                # Filter for Gemini models that support generation
+                if "gemini" in m.name and "generateContent" in m.supported_actions:
+                    dynamic_models.append(m.name.split('/')[-1])
 
-            try:
-                _client = genai.Client(api_key=key)
-                # test
-                from google.genai.types import ListModelsConfig
-                _ = list(_client.models.list(config=ListModelsConfig(page_size=1)))
-                return key
-            except APIError as e:
-                if "API key not valid" in str(e) or "400" in str(e):
-                    messagebox.showerror(title="Error", message="Invalid API Key")
-                else:
-                    messagebox.showerror(title="Error", message=f"API Error: {e}")
-            except Exception as e:
-                messagebox.showerror(
-                    title="Error",
-                    message=f"Unexpected error: {e}\nCheck your internet connection.")
+            # Pass models to GUI for the settings dropdown
+            self.gui.set_available_models(dynamic_models)
+        except Exception as e:
+            print(f"Model list warning: {e}")
+            # Fallback defaults
+            self.gui.set_available_models(["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"])
+
+    @staticmethod
+    def ask_api_key(parent):
+        return Dialog.ask_string(parent, "API Key Required", "Enter Google GenAI API Key:", show="*")
 
     def process_input(self, text):
         self.chat_manager.process_input(text)
 
-    def reload_settings(self, reset_default=None):
+    def reload_settings(self):
         self.config_manager.load_config()
-        self.current_settings = self.config_manager.get_settings()
-        self.safety_settings = self.config_manager.get_safety_settings()
-        self.gui.update_settings(self.current_settings)
-        self.chat_manager.update_settings(self.current_settings, self.safety_settings)
+        self.settings = self.config_manager.get_settings()
+        self.safety = self.config_manager.get_safety_settings()
+
+        # Update GUI Theme/Fonts
+        self.gui.update_settings(self.settings)
+        # Update AI Logic
+        self.chat_manager.update_settings(self.settings, self.safety)
 
     def restart_chat(self):
-        self.gui.clear_text()
-        self.gui.append_text("System: Session reset.\n", "system")
+        self.gui.reset_ui()
         self.chat_manager.init_chat()
 
-    def save_chat(self, chatbox=None):
+    def save_chat(self):
         from tkinter import filedialog
-
-        success = False
-
         filepath = filedialog.asksaveasfilename(
-            defaultextension = ".json",
-            filetypes = [("JSON", "*.json")],
-            initialfile = DEFAULT_FILENAME,
-            initialdir = OUTPUT_PATH,
+            defaultextension=".json",
+            filetypes=[("JSON", "*.json")],
+            initialdir=OUTPUT_PATH
         )
         if filepath:
             msg, success = self.chat_manager.save_history(filepath)
-            if chatbox is not None and success and chatbox.edit_modified():
-                chatbox.edit_modified(False)
-            self.gui.append_text(f"System: {msg}", "system" if success else "error")
-        return success
+            self.gui.append_system_msg(msg, success)
 
     def load_chat(self):
         from tkinter import filedialog
-        filepath = filedialog.askopenfilename(
-            filetypes = [("JSON", "*.json")],
-            initialdir = OUTPUT_PATH,
-        )
+        filepath = filedialog.askopenfilename(filetypes=[("JSON", "*.json")], initialdir=OUTPUT_PATH)
         if filepath:
-            hist, msg, success = self.chat_manager.load_history(filepath)
-            if success and hist:
-                self.gui.clear_text()
-                for c in hist:
-                    if c.parts and c.parts[0].text:
-                        role = "user" if c.role == 'user' else "ai"
-                        self.gui.append_text(f"{'You' if role == 'user' else 'Gemini'}: {c.parts[0].text}", role)
-
-    def on_closing(self, chatbox=None):
-        if chatbox is not None and chatbox.edit_modified():
-            prompt = messagebox.askyesnocancel(title="Closing?", message="Do you want to save chat history before closing?")
-            if prompt:
-                saved = self.save_chat()
-                if saved:
-                    self.root.destroy()
-                    sys.exit(0)
-                else:
-                    return
-            elif prompt is False:
-                self.root.destroy()
-                sys.exit(0)
+            history, msg, success = self.chat_manager.load_history(filepath)
+            if success:
+                self.gui.render_history(history)
             else:
+                self.gui.append_system_msg(msg, False)
+
+    def on_closing(self):
+        if self.gui.is_dirty():
+            confirm = messagebox.askyesnocancel("Save?", "Save chat history before closing?")
+            if confirm:
+                self.save_chat()
+            elif confirm is None:
                 return
-        else:
-            self.root.destroy()
-            sys.exit(0)
+        self.root.destroy()
+        sys.exit(0)
 
 
 if __name__ == "__main__":
@@ -198,11 +170,10 @@ if __name__ == "__main__":
     try:
         from ctypes import windll
         windll.shcore.SetProcessDpiAwareness(1)
-    except AttributeError:
-        pass
-    except OSError:
+    except: # If you're using non-Windows...
         pass
 
     root = ThemedTk(theme="arc")
     app = App(root)
+    root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()

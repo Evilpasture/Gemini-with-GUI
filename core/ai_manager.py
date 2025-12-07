@@ -1,90 +1,97 @@
 import threading
 import json
+import os # for error handling
 from google.genai import types, errors
+
 
 class ChatManager:
     def __init__(self, client, response_callback, settings, safety_settings):
         self.client = client
-        self.response_callback = response_callback # Function to call when AI replies
+        self.callback = response_callback
         self.settings = settings
-        self.safety_settings = safety_settings
+        self.safety = safety_settings
         self.chat = None
         self.init_chat()
 
     def update_settings(self, new_settings, new_safety):
+        """Preserve history when settings change so that the bot doesn't treat you like a stranger"""
+        history = []
+        if self.chat:
+            history = self.chat.get_history()
+
         self.settings = new_settings
-        self.safety_settings = new_safety
-        # Note: Changing settings usually requires re-init of chat to take effect on system prompt
-        self.init_chat()
+        self.safety = new_safety
+        self.init_chat(history)
 
     def init_chat(self, history=None):
         try:
-            persona = f"At this present, you are talking to {self.settings['user_name']}. "
+            # Explicitly instruct model to use Markdown, solving the parsing ambiguity
+            sys_instruct = (
+                f"{self.settings.get('instruction', '')}\n"
+                f"You are talking to {self.settings.get('user_name', 'User')}. "
+                "Format responses in Markdown."
+            )
+
             config = types.GenerateContentConfig(
-                system_instruction=f"{self.settings['instruction']}\n{persona}",
-                temperature=self.settings['temperature'],
-                safety_settings=self.safety_settings
+                system_instruction=sys_instruct,
+                temperature=float(self.settings.get('temperature', 0.7)),
+                safety_settings=self.safety
             )
+
             self.chat = self.client.chats.create(
-                model=self.settings['model_name'],
+                model=self.settings.get('model_name', 'gemini-2.0-flash'),
                 config=config,
-                history=history
+                history=history or []
             )
         except Exception as e:
-            print(f"Chat Init Error: {e}")
-            self.response_callback(f"System Error: Failed to initialize model.", True)
+            self.callback(f"System Error: Failed to init model.\n{e}", "error")
 
-    def process_input(self, user_text):
-        """Starts the API call in a separate thread"""
-        thread = threading.Thread(target=self._run_api_call, args=(user_text,))
-        thread.daemon = True
-        thread.start()
+    def process_input(self, text):
+        """Starts the API call in a separate thread."""
+        if not text.strip(): return
+        # Use threading to prevent GUI freeze
+        t = threading.Thread(target=self._run_thread, args=(text,))
+        t.daemon = True
+        t.start()
 
-    def _run_api_call(self, text):
+    def _run_thread(self, text):
         if not self.chat:
-            self.response_callback("Chat session not initialized.", True)
+            self.callback("Session not initialized.", "error")
             return
-        # self.handle_safety()
+
         try:
-            response = self.chat.send_message(text)
-            # I'll do it later. See line 65.
-            result_text = response.text
-            is_error = False
+            stream = self.chat.send_message_stream(text)
+            for chunk in stream:
+                if chunk.text:
+                    self.callback(chunk.text, "stream")
+            self.callback(None, "finished")
+
         except errors.APIError as e:
-            result_text = f"API Error {e.code}: {e.message}"
-            is_error = True
+            self.callback(f"API Error: {e.message}", "error")
         except Exception as e:
-            result_text = f"Unexpected Error: {str(e)}"
-            is_error = True
-
-        # Use the callback to send data back to Main/GUI
-        # Note: The GUI is responsible for using root.after if this is called from a thread
-        self.response_callback(result_text, is_error)
-
-    def handle_safety(self, reason, original_prompt):
-        # not very urgent right now, you can always relax the filters.
-        # the only problem is when you wrote a long prompt, but you didn't receive a response, thus wasting input token.
-        print(reason)
-        new_prompt = original_prompt
-        return new_prompt
+            self.callback(f"Connection Error: {e}", "error")
 
     def save_history(self, filepath):
-        if not self.chat:
-            return "Error: No active chat.", False
+        if not self.chat: return "No chat to save.", False
         try:
-            history_list = [types.Content.model_dump(h, exclude_none=True) for h in self.chat.get_history()]
-            with open(filepath, 'w') as f:
-                json.dump(history_list, f, indent=4)
-            return f"Saved to {filepath}", True
+            # Ensure ASCII is false to support Unicode/Emoji
+            hist_data = [
+                types.Content.model_dump(h, exclude_none=True)
+                for h in self.chat.get_history()
+            ]
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(hist_data, f, indent=2, ensure_ascii=False)
+            return f"Saved to {os.path.basename(filepath)}", True
         except Exception as e:
-            return f"Save Error: {e}", False
+            return f"Save failed: {e}", False
 
     def load_history(self, filepath):
         try:
-            with open(filepath, 'r') as f:
-                history_data = json.load(f)
-            loaded_history = [types.Content(**d) for d in history_data]
-            self.init_chat(history=loaded_history)
-            return loaded_history, f"Loaded from {filepath}", True
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            # Reconstruct Google Types
+            history = [types.Content(**d) for d in data]
+            self.init_chat(history)
+            return history, "Loaded successfully", True
         except Exception as e:
-            return None, f"Load Error: {e}", False
+            return None, f"Load failed: {e}", False

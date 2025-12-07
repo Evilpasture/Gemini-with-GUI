@@ -130,8 +130,7 @@ class App:
         self.chat_manager.update_settings(self.settings, self.safety)
 
     def restart_chat(self):
-        self.gui.clear_text()
-        self.gui.append_text("System: Session reset.\n", "system")
+        self.gui.reset_ui()
         self.chat_manager.init_chat()
 
     def save_chat(self, chatbox=None):

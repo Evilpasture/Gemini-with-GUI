@@ -146,37 +146,23 @@ class App:
 
     def load_chat(self):
         from tkinter import filedialog
-        filepath = filedialog.askopenfilename(
-            filetypes = [("JSON", "*.json")],
-            initialdir = OUTPUT_PATH,
-        )
+        filepath = filedialog.askopenfilename(filetypes=[("JSON", "*.json")], initialdir=OUTPUT_PATH)
         if filepath:
-            hist, msg, success = self.chat_manager.load_history(filepath)
-            if success and hist:
-                self.gui.clear_text()
-                for c in hist:
-                    if c.parts and c.parts[0].text:
-                        role = "user" if c.role == 'user' else "ai"
-                        self.gui.append_text(f"{'You' if role == 'user' else 'Gemini'}: {c.parts[0].text}", role)
-
-    def on_closing(self, chatbox=None):
-        if chatbox is not None and chatbox.edit_modified():
-            prompt = messagebox.askyesnocancel(title="Closing?", message="Do you want to save chat history before closing?")
-            if prompt:
-                saved = self.save_chat()
-                if saved:
-                    self.root.destroy()
-                    sys.exit(0)
-                else:
-                    return
-            elif prompt is False:
-                self.root.destroy()
-                sys.exit(0)
+            history, msg, success = self.chat_manager.load_history(filepath)
+            if success:
+                self.gui.render_history(history)
             else:
+                self.gui.append_system_msg(msg, False)
+
+    def on_closing(self):
+        if self.gui.is_dirty():
+            confirm = messagebox.askyesnocancel("Save?", "Save chat history before closing?")
+            if confirm:
+                self.save_chat()
+            elif confirm is None:
                 return
-        else:
-            self.root.destroy()
-            sys.exit(0)
+        self.root.destroy()
+        sys.exit(0)
 
 
 if __name__ == "__main__":

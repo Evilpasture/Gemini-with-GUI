@@ -11,7 +11,6 @@ class ChatManager:
         self.settings = settings
         self.safety = safety_settings
         self.chat = None
-        # Initialize the chat immediately
         self.init_chat()
 
     def update_settings(self, new_settings, new_safety, new_debug):

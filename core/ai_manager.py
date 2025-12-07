@@ -54,31 +54,22 @@ class ChatManager:
         t.daemon = True
         t.start()
 
-        thread = threading.Thread(target=self._run_api_call, args=(user_text,))
-        thread.daemon = True
-        thread.start()
-
-    def _run_api_call(self, text):
+    def _run_thread(self, text):
         if not self.chat:
-            self.response_callback("Chat session not initialized.", "error")
+            self.callback("Session not initialized.", "error")
             return
 
         try:
-            # Send stream request
-            response_stream = self.chat.send_message_stream(text)
-
-            for chunk in response_stream:
+            stream = self.chat.send_message_stream(text)
+            for chunk in stream:
                 if chunk.text:
-                    self.response_callback(chunk.text, "stream")
-
-            self.response_callback(None, "finished")
+                    self.callback(chunk.text, "stream")
+            self.callback(None, "finished")
 
         except errors.APIError as e:
-            # Handle API-specific errors (400, 403, etc.)
-            self.response_callback(f"API Error {e.code}: {e.message}", "error")
+            self.callback(f"API Error: {e.message}", "error")
         except Exception as e:
-            # Handle connection or unknown errors
-            self.response_callback(f"Unexpected Error: {str(e)}", "error")
+            self.callback(f"Connection Error: {e}", "error")
 
     def save_history(self, filepath):
         if not self.chat:

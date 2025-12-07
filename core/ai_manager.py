@@ -46,10 +46,13 @@ class ChatManager:
         except Exception as e:
             self.callback(f"System Error: Failed to init model.\n{e}", "error")
 
-    def process_input(self, user_text):
+    def process_input(self, text):
         """Starts the API call in a separate thread."""
-        if not user_text.strip():
-            return
+        if not text.strip(): return
+        # Use threading to prevent GUI freeze
+        t = threading.Thread(target=self._run_thread, args=(text,))
+        t.daemon = True
+        t.start()
 
         thread = threading.Thread(target=self._run_api_call, args=(user_text,))
         thread.daemon = True

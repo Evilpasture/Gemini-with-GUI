@@ -72,19 +72,18 @@ class ChatManager:
             self.callback(f"Connection Error: {e}", "error")
 
     def save_history(self, filepath):
-        if not self.chat:
-            return "Error: No active chat.", False
+        if not self.chat: return "No chat to save.", False
         try:
-            # Dump history to a list of dicts
-            history_list = [
+            # Ensure ASCII is false to support Unicode/Emoji
+            hist_data = [
                 types.Content.model_dump(h, exclude_none=True)
                 for h in self.chat.get_history()
             ]
             with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(history_list, f, indent=4, ensure_ascii=False)
-            return f"Saved to {filepath}", True
+                json.dump(hist_data, f, indent=2, ensure_ascii=False)
+            return f"Saved to {os.path.basename(filepath)}", True
         except Exception as e:
-            return f"Save Error: {e}", False
+            return f"Save failed: {e}", False
 
     def load_history(self, filepath):
         try:

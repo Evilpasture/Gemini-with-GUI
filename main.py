@@ -59,68 +59,41 @@ OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 class App:
     def __init__(self, _root):
         self.root = _root
-
         self.config_manager = ConfigManager()
-        self.current_settings = self.config_manager.get_settings()
-        self.safety_settings = self.config_manager.get_safety_settings()
-        self.debug_settings = self.config_manager.get_debug_settings()
 
-        self.api_key = API_KEY
+        # Load settings, just more efficiently because somehow I did call it not efficiently
+        self.settings = self.config_manager.get_settings()
+        self.safety = self.config_manager.get_safety_settings()
 
-        self.dynamic_models = []
+        self.api_key = os.getenv("GEMINI_API_KEY")
 
-        self.gui = MainWindow(self.root, self, self.current_settings, dynamic_models=self.dynamic_models, debug_settings=self.debug_settings)
+        # 1. Setup GUI (Pass empty model list first, populate later)
+        self.gui = MainWindow(self.root, self, self.settings)
 
+        # 2. Check API Key
         if not self.api_key:
-            key = self.check_api(self.root)
-            if key is None:
+            self.api_key = self.ask_api_key(self.root)
+            if not self.api_key:
                 sys.exit(0)
+            # Save to env for next time
+            with open(".env", "w") as f:
+                f.write(f"\nGEMINI_API_KEY=\"{self.api_key}\"\n")
 
-            self.api_key = key
-            try:
-                with open(".env", "w") as f:
-                    f.write(f"\nGEMINI_API_KEY=\"{key}\"\n")
-            except OSError as e:
-                print(f"Failed to write .env file: {e}")
-
+        # 3. Init Client & Fetch Models
         try:
             self.client = genai.Client(api_key=self.api_key)
-            model_list = self.client.models.list()
-            for model in model_list:
-                if "generateContent" in model.supported_actions and model.name.startswith("models/gemini"):
-                    self.dynamic_models.append(model.name.split('/')[-1])
-        except ValueError as e:
-            messagebox.showerror(
-                "Initialization Error",
-                f"API Key Initialization Failed. Check Key Format:\n{e}"
-            )
-            self.root.destroy()
-            return
+            self.populate_models()
         except Exception as e:
-            messagebox.showerror("Error", f"Unexpected error during client setup:\n{e}")
-            self.root.destroy()
+            messagebox.showerror("Initialization Error", f"Failed to connect to Gemini. Check your internet connections:\n{e}")
             sys.exit(1)
 
-
+        # 4. Init Chat Manager
         self.chat_manager = ChatManager(
             self.client,
-            self.gui.on_response_received,
-            settings=self.current_settings,
-            safety_settings=self.safety_settings,
-            debug_settings=self.debug_settings
+            self.gui.on_response_received,  # Callback
+            self.settings,
+            self.safety
         )
-
-    @staticmethod
-    def check_api(ref_root):
-        while True:
-            key = Dialog.ask_string(
-                parent=ref_root,
-                title="Gemini API Key",
-                prompt="Enter your API Key:",
-                show='*'
-            )
-            if key is None:
-                return None
 
             try:
                 _client = genai.Client(api_key=key)

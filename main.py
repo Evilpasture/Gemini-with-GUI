@@ -133,23 +133,16 @@ class App:
         self.gui.reset_ui()
         self.chat_manager.init_chat()
 
-    def save_chat(self, chatbox=None):
+    def save_chat(self):
         from tkinter import filedialog
-
-        success = False
-
         filepath = filedialog.asksaveasfilename(
-            defaultextension = ".json",
-            filetypes = [("JSON", "*.json")],
-            initialfile = DEFAULT_FILENAME,
-            initialdir = OUTPUT_PATH,
+            defaultextension=".json",
+            filetypes=[("JSON", "*.json")],
+            initialdir=OUTPUT_PATH
         )
         if filepath:
             msg, success = self.chat_manager.save_history(filepath)
-            if chatbox is not None and success and chatbox.edit_modified():
-                chatbox.edit_modified(False)
-            self.gui.append_text(f"System: {msg}", "system" if success else "error")
-        return success
+            self.gui.append_system_msg(msg, success)
 
     def load_chat(self):
         from tkinter import filedialog

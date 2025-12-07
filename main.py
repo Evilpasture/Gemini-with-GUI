@@ -170,9 +170,7 @@ if __name__ == "__main__":
     try:
         from ctypes import windll
         windll.shcore.SetProcessDpiAwareness(1)
-    except AttributeError:
-        pass
-    except OSError:
+    except: # If you're using non-Windows...
         pass
 
     root = ThemedTk(theme="arc")

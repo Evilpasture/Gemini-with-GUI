@@ -177,4 +177,5 @@ if __name__ == "__main__":
 
     root = ThemedTk(theme="arc")
     app = App(root)
+    root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()

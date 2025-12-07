@@ -121,15 +121,13 @@ class App:
 
     def reload_settings(self):
         self.config_manager.load_config()
-        self.current_settings = self.config_manager.get_settings()
-        self.safety_settings = self.config_manager.get_safety_settings()
-        self.debug_settings = self.config_manager.get_debug_settings()
-        self.gui.update_settings(self.current_settings)
-        self.chat_manager.update_settings(
-            new_settings=self.current_settings,
-            new_safety=self.safety_settings,
-            new_debug=self.debug_settings
-        )
+        self.settings = self.config_manager.get_settings()
+        self.safety = self.config_manager.get_safety_settings()
+
+        # Update GUI Theme/Fonts
+        self.gui.update_settings(self.settings)
+        # Update AI Logic
+        self.chat_manager.update_settings(self.settings, self.safety)
 
     def restart_chat(self):
         self.gui.clear_text()

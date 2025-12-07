@@ -88,13 +88,10 @@ class ChatManager:
     def load_history(self, filepath):
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
-                history_data = json.load(f)
-
-            # Reconstruct types.Content objects
-            loaded_history = [types.Content(**d) for d in history_data]
-
-            # Re-init chat with new history
-            self.init_chat(history=loaded_history)
-            return loaded_history, f"Loaded from {filepath}", True
+                data = json.load(f)
+            # Reconstruct Google Types
+            history = [types.Content(**d) for d in data]
+            self.init_chat(history)
+            return history, "Loaded successfully", True
         except Exception as e:
-            return None, f"Load Error: {e}", False
+            return None, f"Load failed: {e}", False

@@ -13,53 +13,38 @@ class ChatManager:
         self.chat = None
         self.init_chat()
 
-    def update_settings(self, new_settings, new_safety, new_debug):
-        """Updates settings and re-initializes the chat session while preserving history."""
-        current_history = None
+    def update_settings(self, new_settings, new_safety):
+        """Preserve history when settings change so that the bot doesn't treat you like a stranger"""
+        history = []
         if self.chat:
-            try:
-                # Attempt to save current context before reloading
-                current_history = self.chat.get_history()
-            except Exception as e:
-                print(f"History preservation failed during update: {e}")
-                current_history = []
+            history = self.chat.get_history()
 
         self.settings = new_settings
-        self.safety_settings = new_safety
-        self.debug_settings = new_debug
-
-        self.init_chat(history=current_history)
+        self.safety = new_safety
+        self.init_chat(history)
 
     def init_chat(self, history=None):
         try:
-            markup_style = self.debug_settings.get('markup_language', 'AsciiDoc')
-
-            if markup_style == "Markdown":
-                markup_instruction = ""
-            else:
-                markup_instruction = (
-                    f"\n[SYSTEM: Please use {markup_style} formatting "
-                    f"instead of Markdown for code blocks and headers.]"
-                )
-
-            persona = f"You are talking to {self.settings.get('user_name', 'User')}."
-            full_instruction = f"{self.settings.get('instruction', '')}\n{persona}{markup_instruction}"
+            # Explicitly instruct model to use Markdown, solving the parsing ambiguity
+            sys_instruct = (
+                f"{self.settings.get('instruction', '')}\n"
+                f"You are talking to {self.settings.get('user_name', 'User')}. "
+                "Format responses in Markdown."
+            )
 
             config = types.GenerateContentConfig(
-                system_instruction=full_instruction,
+                system_instruction=sys_instruct,
                 temperature=float(self.settings.get('temperature', 0.7)),
-                safety_settings=self.safety_settings
+                safety_settings=self.safety
             )
 
             self.chat = self.client.chats.create(
-                model=self.settings.get('model_name', 'gemini-1.5-flash'),
+                model=self.settings.get('model_name', 'gemini-2.0-flash'),
                 config=config,
-                history=history
+                history=history or []
             )
         except Exception as e:
-            print(f"Chat Initialization Error: {e}")
-            # Send error as "error" string, not boolean True
-            self.response_callback(f"System Error: Failed to initialize model.\n{e}", "error")
+            self.callback(f"System Error: Failed to init model.\n{e}", "error")
 
     def process_input(self, user_text):
         """Starts the API call in a separate thread."""

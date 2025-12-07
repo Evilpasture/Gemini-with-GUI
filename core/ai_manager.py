@@ -5,15 +5,11 @@ from google.genai import types, errors
 
 
 class ChatManager:
-    def __init__(self, client, response_callback, settings, safety_settings, debug_settings):
+    def __init__(self, client, response_callback, settings, safety_settings):
         self.client = client
-        self.response_callback = response_callback  # Function to call when AI replies
-
-        # Store settings directly
+        self.callback = response_callback
         self.settings = settings
-        self.safety_settings = safety_settings
-        self.debug_settings = debug_settings
-
+        self.safety = safety_settings
         self.chat = None
         # Initialize the chat immediately
         self.init_chat()

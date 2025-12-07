@@ -95,21 +95,26 @@ class App:
             self.safety
         )
 
-            try:
-                _client = genai.Client(api_key=key)
-                # test
-                from google.genai.types import ListModelsConfig
-                _ = list(_client.models.list(config=ListModelsConfig(page_size=1)))
-                return key
-            except APIError as e:
-                if "API key not valid" in str(e) or "400" in str(e):
-                    messagebox.showerror(title="Error", message="Invalid API Key")
-                else:
-                    messagebox.showerror(title="Error", message=f"API Error: {e}")
-            except Exception as e:
-                messagebox.showerror(
-                    title="Error",
-                    message=f"Unexpected error: {e}\nCheck your internet connection.")
+    def populate_models(self):
+        # Fetch models dynamically, but it wouldn't screw up the entire program
+        try:
+            dynamic_models = []
+            # Note: Page size config might vary by SDK version, simplified listing:
+            for m in self.client.models.list():
+                # Filter for Gemini models that support generation
+                if "gemini" in m.name and "generateContent" in m.supported_actions:
+                    dynamic_models.append(m.name.split('/')[-1])
+
+            # Pass models to GUI for the settings dropdown
+            self.gui.set_available_models(dynamic_models)
+        except Exception as e:
+            print(f"Model list warning: {e}")
+            # Fallback defaults
+            self.gui.set_available_models(["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"])
+
+    @staticmethod
+    def ask_api_key(parent):
+        return Dialog.ask_string(parent, "API Key Required", "Enter Google GenAI API Key:", show="*")
 
     def process_input(self, text):
         self.chat_manager.process_input(text)

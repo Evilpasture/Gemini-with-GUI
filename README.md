@@ -12,6 +12,8 @@ A lightweight, desktop-based chat interface for Google's Gemini models built wit
 
 - Chat history reset functionality
 
+- Markdown support
+
 - UI locking to prevent multiple requests
 
 - Environment-based configuration

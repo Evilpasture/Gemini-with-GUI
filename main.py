@@ -4,52 +4,56 @@ from pathlib import Path
 import os
 import sys
 
-# --- Third-Party Dependency Check ---
-try:
-    from dotenv import load_dotenv
-    from google import genai
-    from google.genai.errors import APIError
-    from ttkthemes import ThemedTk
-except ImportError as e:
-    missing_package = str(e).split(' ')[-1]
-    tk.messagebox.showerror(
-        "Dependency Error",
-        f"Missing critical library: '{missing_package}'. Please install dependencies."
-    )
-    sys.exit(1)
+
+# --- Centralized Dependency Check ---
+def check_dependencies():
+    required = {
+        'google.genai': 'google-genai',
+        'dotenv': 'python-dotenv',
+        'ttkthemes': 'ttkthemes'
+    }
+    missing = []
+    for module, pip_name in required.items():
+        try:
+            __import__(module)
+        except ImportError:
+            missing.append(pip_name)
+
+    if missing:
+        # We can't use tk.messagebox easily before root, but simple print/sys.exit is safer here
+        print(f"CRITICAL: Missing libraries: {', '.join(missing)}")
+        print(f"Run: pip install {' '.join(missing)}")
+        sys.exit(1)
+
+
+check_dependencies()
+
+# Imports after check
+from dotenv import load_dotenv
+from google import genai
+from ttkthemes import ThemedTk
 
 # --- Internal Module Setup ---
 SCRIPT_DIR = Path(getattr(sys, 'frozen', False) and sys.executable or __file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.append(str(SCRIPT_DIR))
 
+# Consolidated imports to catch structural errors early
 try:
     from core.config import ConfigManager
     from core.ai_manager import ChatManager
     from ui.main_window import MainWindow
-    from ui.settings import PreferencesWindow
     from ui.dialog import Dialog
 except ImportError as e:
-    tk.messagebox.showerror(
-        "Internal Error",
-        f"Critical application files are missing or misplaced.\nError: {e}"
-    )
+    # Minimal TK root just to show error
+    r = tk.Tk()
+    r.withdraw()
+    messagebox.showerror("Internal Error", f"Application files missing.\nTrace: {e}")
     sys.exit(1)
 
 load_dotenv()
-API_KEY = os.getenv("GEMINI_API_KEY")
-OUTPUT_DIR_NAME = "chats"
-DEFAULT_FILENAME = "chat.json"
-
-
-OUTPUT_PATH = SCRIPT_DIR / OUTPUT_DIR_NAME
-
-try:
-    OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
-    print(f"Output directory established at: {OUTPUT_PATH}")
-except OSError as e:
-    print(f"Error creating directory {OUTPUT_PATH}: {e}")
-    print(f"Falling back to script directory: {SCRIPT_DIR}")
+OUTPUT_PATH = SCRIPT_DIR / "chats"
+OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
 
 class App:

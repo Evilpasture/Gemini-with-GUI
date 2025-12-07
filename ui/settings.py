@@ -1,214 +1,128 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
-import os
-from core.config import CONFIG_FILE, LIGHT_THEMES, THRESHOLD_MAP, ALL_MODELS, DEFAULT_CONFIG
+from tkinter import ttk
+
+# Options available in Google GenAI
+SAFETY_OPTIONS = [
+    "BLOCK_NONE",
+    "BLOCK_ONLY_HIGH",
+    "BLOCK_MEDIUM_AND_ABOVE",
+    "BLOCK_LOW_AND_ABOVE"
+]
 
 
 class PreferencesWindow(tk.Toplevel):
-    def __init__(self, parent, config_parser, on_save_callback, dynamic_models=None):
+    def __init__(self, parent, config_manager, save_callback, models):
         super().__init__(parent)
-        self.config = config_parser
-        self.on_save_callback = on_save_callback
-        # Rename for clarity and handle None
-        self.dynamic_models = dynamic_models if dynamic_models else ALL_MODELS
+        self.config = config_manager.get_parser()
+        self.save_callback = save_callback
+        self.models = models
 
-        self.title("Preferences")
-        self.geometry("450x620")
-        self.resizable(False, False)
-        self.grab_set()
+        self.title("Settings")
+        self.geometry("450x550")  # Slightly taller for extra tab
         self.transient(parent)
+        self.grab_set()
 
-        self.txt_instruct = None
+        self.safety_vars = {}  # Store safety string variables here
 
-        # Initialize Variables
-        self.init_variables()
+        self._init_vars()
+        self._build_ui()
 
-        # Layout
-        self.create_layout()
+    def _init_vars(self):
+        # General Settings
+        s = self.config['SETTINGS']
+        self.v_model = tk.StringVar(value=s.get('MODEL_NAME'))
+        self.v_temp = tk.DoubleVar(value=s.getfloat('TEMPERATURE'))
+        self.v_user = tk.StringVar(value=s.get('USER_NAME'))
+        self.v_bot = tk.StringVar(value=s.get('CHATBOT_NAME'))
+        self.v_font = tk.IntVar(value=s.getint('FONT_SIZE'))
+        self.v_theme = tk.StringVar(value=s.get('THEME'))
 
-    def init_variables(self):
-        """Loads values from config into Tk variables."""
-        self.var_model = tk.StringVar(value=self.config.get('SETTINGS', 'MODEL_NAME', fallback='gemini-2.5-flash'))
-        self.var_temp = tk.DoubleVar(value=self.config.getfloat('SETTINGS', 'TEMPERATURE', fallback=0.7))
-        self.var_user = tk.StringVar(value=self.config.get('SETTINGS', 'USER_NAME', fallback='User'))
-        self.var_bot = tk.StringVar(value=self.config.get('SETTINGS', 'CHATBOT_NAME', fallback='Gemini'))
-        self.var_font = tk.IntVar(value=self.config.getint('SETTINGS', 'STANDARD_FONT_SIZE', fallback=11))
-        self.var_theme = tk.StringVar(value=self.config.get('SETTINGS', 'THEME', fallback='arc'))
+        # Safety Settings
+        # We loop through the keys defined in config.py
+        safe_sect = self.config['SAFETY']
+        for key in ['HARASSMENT', 'HATE_SPEECH', 'DANGEROUS', 'SEXUAL', 'CIVIC']:
+            # Default to BLOCK_MEDIUM if key missing
+            val = safe_sect.get(key, "BLOCK_MEDIUM_AND_ABOVE")
+            self.safety_vars[key] = tk.StringVar(value=val)
 
-    def create_layout(self):
-        notebook = ttk.Notebook(self)
-        notebook.pack(pady=10, padx=10, expand=True, fill='both')
+    def _build_ui(self):
+        nb = ttk.Notebook(self)
+        nb.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.tab_ai = ttk.Frame(notebook, padding=15)
-        self.tab_sys = ttk.Frame(notebook, padding=15)
+        f_gen = ttk.Frame(nb, padding=15)
+        f_safe = ttk.Frame(nb, padding=15)  # New Safety Tab
+        f_app = ttk.Frame(nb, padding=15)
 
-        notebook.add(self.tab_ai, text="AI Settings")
-        notebook.add(self.tab_sys, text="Appearance")
+        nb.add(f_gen, text="AI Parameters")
+        nb.add(f_safe, text="Safety Filters")
+        nb.add(f_app, text="Appearance")
 
-        self.build_ai_tab()
-        self.build_sys_tab()
+        # --- 1. General Tab ---
+        self._grid_opt(f_gen, 0, "Model:", ttk.Combobox(f_gen, textvariable=self.v_model, values=self.models))
 
-        # Action Buttons
-        btn_frame = ttk.Frame(self)
-        btn_frame.pack(side="bottom", fill="x", padx=15, pady=15)
+        ttk.Label(f_gen, text="Creativity (Temp):").grid(row=1, column=0, sticky="w", pady=5)
+        sc = ttk.Scale(f_gen, from_=0.0, to=1.0, variable=self.v_temp)
+        sc.grid(row=1, column=1, sticky="ew")
 
-        self.btn_reset = ttk.Button(btn_frame, text="Reset to Defaults", command=self.reset_default)
-        self.btn_reset.pack(side="left")
+        self._grid_opt(f_gen, 2, "Your Name:", ttk.Entry(f_gen, textvariable=self.v_user))
+        self._grid_opt(f_gen, 3, "Bot Name:", ttk.Entry(f_gen, textvariable=self.v_bot))
 
-        ttk.Button(btn_frame, text="Save & Apply", command=self.save).pack(side="right", padx=5)
-        ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side="right")
+        ttk.Label(f_gen, text="Instructions:").grid(row=4, column=0, sticky="nw", pady=5)
+        self.txt_instr = tk.Text(f_gen, height=5, width=20, font=("Segoe UI", 9))
+        self.txt_instr.grid(row=4, column=1, sticky="ew")
+        self.txt_instr.insert("1.0", self.config['SETTINGS'].get('INSTRUCTION', ''))
 
-    def build_ai_tab(self):
-        # Grid helper
-        def grid_row(idx, label, widget):
-            ttk.Label(self.tab_ai, text=label).grid(row=idx, column=0, sticky="w", pady=8)
-            widget.grid(row=idx, column=1, sticky="w", pady=8)
+        # --- 2. Safety Tab ---
+        # Generate dropdowns dynamically
+        row_idx = 0
+        for key, var in self.safety_vars.items():
+            label_text = key.replace("_", " ").title() + ":"
+            cb = ttk.Combobox(f_safe, textvariable=var, values=SAFETY_OPTIONS, state="readonly")
+            self._grid_opt(f_safe, row_idx, label_text, cb)
+            row_idx += 1
 
-        # Model Selection
-        cb_model = ttk.Combobox(self.tab_ai, textvariable=self.var_model, values=self.dynamic_models)
-        grid_row(0, "Model Name:", cb_model)
+        ttk.Label(f_safe, text=
+"""Note: 'Block None' may result in 
+unfiltered or unstable content. 
+But I know you're responsible... right?""",
+                  foreground="gray").grid(row=row_idx, column=0, columnspan=2)
 
-        # Temperature
-        scale = ttk.Scale(self.tab_ai, from_=0.0, to=2.0, variable=self.var_temp)
-        grid_row(1, "Temperature:", scale)
+        # --- 3. App Tab ---
+        self._grid_opt(f_app, 0, "Font Size:", ttk.Spinbox(f_app, from_=8, to=24, textvariable=self.v_font))
+        themes = ["arc", "yaru", "radiance", "breeze", "equilux"]
+        self._grid_opt(f_app, 1, "Theme:", ttk.Combobox(f_app, textvariable=self.v_theme, values=themes))
 
-        # Names
-        grid_row(2, "User Name:", ttk.Entry(self.tab_ai, textvariable=self.var_user))
-        grid_row(3, "Bot Name:", ttk.Entry(self.tab_ai, textvariable=self.var_bot))
+        # --- Bottom Buttons ---
+        btns = ttk.Frame(self)
+        btns.pack(fill="x", padx=10, pady=10)
+        ttk.Button(btns, text="Save & Apply", command=self.save).pack(side="right")
+        ttk.Button(btns, text="Cancel", command=self.destroy).pack(side="right", padx=5)
 
-        # Instructions
-        ttk.Label(self.tab_ai, text="System Instructions:").grid(row=4, column=0, sticky="nw", pady=8)
-        self.txt_instruct = tk.Text(self.tab_ai, height=5, width=25, font=("Arial", 9))
-        self.txt_instruct.grid(row=4, column=1, sticky="ew", pady=8)
-
-        # Load instruction text safely
-        current_instruct = self.config.get('SETTINGS', 'INSTRUCTION', fallback='')
-        self.txt_instruct.insert("1.0", current_instruct)
-
-        # Advanced Button
-        ttk.Button(self.tab_ai, text="Safety & Debug...", command=self.open_advanced).grid(
-            row=5, column=0, columnspan=2, sticky="ew", pady=(15, 5)
-        )
-        self.tab_ai.columnconfigure(1, weight=1)
-
-    def build_sys_tab(self):
-        ttk.Label(self.tab_sys, text="Font Size:").grid(row=0, column=0, sticky="w", pady=10)
-        ttk.Spinbox(self.tab_sys, from_=8, to=24, textvariable=self.var_font, width=10).grid(row=0, column=1,
-                                                                                             sticky="w", pady=10)
-
-        ttk.Label(self.tab_sys, text="Visual Theme:").grid(row=1, column=0, sticky="w", pady=10)
-        ttk.Combobox(self.tab_sys, textvariable=self.var_theme, values=LIGHT_THEMES, state="readonly").grid(row=1,
-                                                                                                            column=1,
-                                                                                                            sticky="w",
-                                                                                                            pady=10)
-
-    def open_advanced(self):
-        AdvancedSettings(self, self.config)
-
-    def reset_default(self):
-        if not messagebox.askokcancel("Reset", "Reset all settings to default values?"):
-            return
-
-        try:
-            # 1. Delete file
-            if os.path.exists(CONFIG_FILE):
-                os.remove(CONFIG_FILE)
-
-            # 2. Reset In-Memory Config Object
-            self.config.read_dict(DEFAULT_CONFIG)
-
-            # 3. Update UI Variables to reflect defaults immediately
-            self.var_model.set(DEFAULT_CONFIG['SETTINGS']['MODEL_NAME'])
-            self.var_temp.set(float(DEFAULT_CONFIG['SETTINGS']['TEMPERATURE']))
-            self.var_user.set(DEFAULT_CONFIG['SETTINGS']['USER_NAME'])
-            self.var_bot.set(DEFAULT_CONFIG['SETTINGS']['CHATBOT_NAME'])
-            self.var_font.set(int(DEFAULT_CONFIG['SETTINGS']['STANDARD_FONT_SIZE']))
-            self.var_theme.set(DEFAULT_CONFIG['SETTINGS']['THEME'])
-
-            self.txt_instruct.delete("1.0", tk.END)
-            self.txt_instruct.insert("1.0", DEFAULT_CONFIG['SETTINGS']['INSTRUCTION'])
-
-            messagebox.showinfo("Reset", "Defaults restored. Click 'Save' to apply.")
-
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to reset: {e}")
+    @staticmethod
+    def _grid_opt(parent, row, label, widget):
+        ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=8)
+        widget.grid(row=row, column=1, sticky="ew", pady=8, padx=(10, 0))
+        parent.columnconfigure(1, weight=1)
 
     def save(self):
-        if not self.config.has_section('SETTINGS'): self.config.add_section('SETTINGS')
+        # Save General
+        s = self.config['SETTINGS']
+        s['MODEL_NAME'] = self.v_model.get()
+        s['TEMPERATURE'] = f"{self.v_temp.get():.1f}"
+        s['USER_NAME'] = self.v_user.get()
+        s['CHATBOT_NAME'] = self.v_bot.get()
+        s['FONT_SIZE'] = str(self.v_font.get())
+        s['THEME'] = self.v_theme.get()
+        s['INSTRUCTION'] = self.txt_instr.get("1.0", "end-1c").strip()
 
-        self.config.set('SETTINGS', 'MODEL_NAME', self.var_model.get().strip())
-        self.config.set('SETTINGS', 'TEMPERATURE', f"{self.var_temp.get():.1f}")
-        self.config.set('SETTINGS', 'USER_NAME', self.var_user.get().strip())
-        self.config.set('SETTINGS', 'CHATBOT_NAME', self.var_bot.get().strip())
-        self.config.set('SETTINGS', 'STANDARD_FONT_SIZE', str(self.var_font.get()))
-        self.config.set('SETTINGS', 'THEME', self.var_theme.get())
-        self.config.set('SETTINGS', 'INSTRUCTION', self.txt_instruct.get("1.0", "end-1c").strip())
+        # Save Safety
+        safe_sect = self.config['SAFETY']
+        for key, var in self.safety_vars.items():
+            safe_sect[key] = var.get()
 
-        with open(CONFIG_FILE, 'w') as f:
+        # Write to file
+        with open("config.ini", "w") as f:
             self.config.write(f)
 
-        self.on_save_callback()
-        self.destroy()
-
-
-# AdvancedSettings class remains mostly the same, just ensure it uses self.config correctly
-class AdvancedSettings(tk.Toplevel):
-    def __init__(self, parent, config):
-        super().__init__(parent)
-        self.config = config
-        self.title('Safety & Debug')
-        self.geometry("450x600")
-        self.transient(parent)
-        self.grab_set()
-
-        notebook = ttk.Notebook(self)
-        notebook.pack(pady=10, padx=10, expand=True, fill='both')
-
-        self.filter_tab = ttk.Frame(notebook, padding="20")
-        self.debug_tab = ttk.Frame(notebook, padding="20")
-
-        notebook.add(self.filter_tab, text="Safety Filters")
-        notebook.add(self.debug_tab, text="Debug / Advanced")
-
-        self.filter_vars = {}
-        self.build_filter_tab()
-
-        self.var_markup = tk.StringVar(value=self.config.get('DEBUG_SETTINGS', 'MARKUP_LANGUAGE', fallback='AsciiDoc'))
-        self.build_debug_tab()
-
-        ttk.Button(self, text="Close (Staging)", command=self.apply).pack(side="bottom", pady=10)
-
-    def build_filter_tab(self):
-        labels = ["HARASSMENT", "HATE_SPEECH", "DANGEROUS_CONTENT", "SEXUALLY_EXPLICIT", "CIVIC_INTEGRITY"]
-        choices = list(THRESHOLD_MAP.keys())
-
-        for i, lbl in enumerate(labels):
-            key = f"{lbl}_THRESHOLD"
-            display = lbl.replace("_", " ").title()
-
-            ttk.Label(self.filter_tab, text=display).grid(row=i, column=0, sticky="w", pady=5)
-
-            val = self.config.get('SAFETY_SETTINGS', key, fallback="BLOCK_MEDIUM_AND_ABOVE")
-            var = tk.StringVar(value=val)
-            self.filter_vars[key] = var
-
-            ttk.Combobox(self.filter_tab, textvariable=var, values=choices, state="readonly").grid(row=i, column=1,
-                                                                                                   sticky="e", pady=5)
-
-    def build_debug_tab(self):
-        ttk.Label(self.debug_tab, text="Markup Parser:").grid(row=0, column=0, sticky="w")
-        ttk.Combobox(
-            self.debug_tab,
-            textvariable=self.var_markup,
-            values=["AsciiDoc", "Markdown", "reStructuredText"]
-        ).grid(row=0,column=1,sticky="e")
-
-    def apply(self):
-        if not self.config.has_section('SAFETY_SETTINGS'): self.config.add_section('SAFETY_SETTINGS')
-        for key, var in self.filter_vars.items():
-            self.config.set('SAFETY_SETTINGS', key, var.get())
-
-        if not self.config.has_section('DEBUG_SETTINGS'): self.config.add_section('DEBUG_SETTINGS')
-        self.config.set('DEBUG_SETTINGS', 'MARKUP_LANGUAGE', self.var_markup.get())
-
+        self.save_callback()
         self.destroy()

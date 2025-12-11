@@ -74,6 +74,75 @@ class ChatManager:
             self.is_busy = False
             self.lock.release()
 
+    @staticmethod
+    def _consolidate_history(raw_history):
+        """
+        Fixes fragmentation in two steps:
+        1. Merges ADJACENT Content objects that have the same role (e.g. Model -> Model).
+        2. Merges fragmented text PARTS within those objects (e.g. "He", "llo").
+        """
+        if not raw_history:
+            return []
+
+        # --- Step 1: Merge Adjacent Content Objects ---
+        merged_content_list = []
+
+        # Initialize with the first item
+        if len(raw_history) > 0:
+            current_role = raw_history[0].role
+            current_parts = list(raw_history[0].parts)
+
+            for i in range(1, len(raw_history)):
+                next_item = raw_history[i]
+
+                if next_item.role == current_role:
+                    # Found a split message (Model followed by Model). Merge them.
+                    current_parts.extend(next_item.parts)
+                else:
+                    # Role changed (Model -> User). Save current and start new.
+                    merged_content_list.append(types.Content(role=current_role, parts=current_parts))
+                    current_role = next_item.role
+                    current_parts = list(next_item.parts)
+
+            # Append the final accumulated message
+            merged_content_list.append(types.Content(role=current_role, parts=current_parts))
+
+        # --- Step 2: Clean and Merge Text Parts ---
+        final_history = []
+        for content in merged_content_list:
+            clean_parts = []
+            text_buffer = []
+
+            for part in content.parts:
+                # Check for strictly non-text data (Files, Images, Function Calls)
+                # Using getattr to be safe against SDK updates
+                is_blob = (
+                        getattr(part, 'inline_data', None) or
+                        getattr(part, 'function_call', None) or
+                        getattr(part, 'function_response', None) or
+                        getattr(part, 'file_data', None) or
+                        getattr(part, 'executable_code', None) or
+                        getattr(part, 'code_execution_result', None)
+                )
+
+                if is_blob:
+                    # Flush buffer before adding blob
+                    if text_buffer:
+                        clean_parts.append(types.Part(text="".join(text_buffer)))
+                        text_buffer = []
+                    clean_parts.append(part)
+                else:
+                    # It's text (or an empty stream spacer)
+                    txt = getattr(part, 'text', '') or ""
+                    text_buffer.append(txt)
+
+            # Flush remaining text
+            if text_buffer:
+                clean_parts.append(types.Part(text="".join(text_buffer)))
+
+            final_history.append(types.Content(role=content.role, parts=clean_parts))
+
+        return final_history
 
     def save_history(self, filepath):
         if not self.chat: return "No chat to save.", False

@@ -33,7 +33,7 @@ class ChatManager:
 
     def init_chat(self, history=None):
         try:
-            # Explicitly instruct model to use Markdown, solving the parsing ambiguity
+            # Explicitly instruct model to use Markdown just in case
             sys_instruct = (
                 f"{self.settings.get('instruction', '')}\n"
                 f"You are talking to {self.settings.get('user_name', 'User')}. "

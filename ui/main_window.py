@@ -1,7 +1,12 @@
 import tkinter as tk
 from tkinter import ttk
 import time
-from util.chat_text import ChatTextWidget
+try:
+    from util.chat_text import ChatTextWidget
+    CHAT_TEXT = True
+except ImportError:
+    print("Missing chat_text.py. Falling back to regular tk.Text")
+    CHAT_TEXT = False
 from .settings import PreferencesWindow
 
 
@@ -56,8 +61,11 @@ class MainWindow:
         scrollbar = ttk.Scrollbar(chat_frame)
         scrollbar.pack(side="right", fill="y")
 
-        # REFACTOR: Use the unified widget
-        self.chat_display = ChatTextWidget(chat_frame, yscrollcommand=scrollbar.set, wrap="word", relief="flat")
+        # Use the unified widget, or fallback to default tk.Text
+        if CHAT_TEXT:
+            self.chat_display = ChatTextWidget(chat_frame, yscrollcommand=scrollbar.set, wrap="word", relief="flat")
+        else:
+            self.chat_display = tk.Text(chat_frame, yscrollcommand=scrollbar.set, wrap="word", relief="flat")
         self.chat_display.pack(side="left", fill="both", expand=True)
         scrollbar.config(command=self.chat_display.yview)
 

@@ -70,6 +70,10 @@ class ChatManager:
             self.callback(f"API Error: {e.message}", "error")
         except Exception as e:
             self.callback(f"Connection Error: {e}", "error")
+        finally:
+            self.is_busy = False
+            self.lock.release()
+
 
     def save_history(self, filepath):
         if not self.chat: return "No chat to save.", False

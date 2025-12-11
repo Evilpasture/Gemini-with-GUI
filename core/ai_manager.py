@@ -11,17 +11,25 @@ class ChatManager:
         self.settings = settings
         self.safety = safety_settings
         self.chat = None
+
+        self.lock = threading.Lock()
+        self.is_busy = False
+
         self.init_chat()
 
     def update_settings(self, new_settings, new_safety):
         """Preserve history when settings change so that the bot doesn't treat you like a stranger"""
-        history = []
-        if self.chat:
-            history = self.chat.get_history()
+        with self.lock:
+            history = []
+            if self.chat:
+                try:
+                    history = self.chat.get_history()
+                except Exception:
+                    pass
 
-        self.settings = new_settings
-        self.safety = new_safety
-        self.init_chat(history)
+            self.settings = new_settings
+            self.safety = new_safety
+            self.init_chat(history)
 
     def init_chat(self, history=None):
         try:
@@ -49,15 +57,25 @@ class ChatManager:
     def process_input(self, text):
         """Starts the API call in a separate thread."""
         if not text.strip(): return
-        # Use threading to prevent GUI freeze
+
+        if self.lock.locked():
+            self.callback("Please wait for the current message to finish.", "warning")
+            return
+
         t = threading.Thread(target=self._run_thread, args=(text,))
         t.daemon = True
         t.start()
 
     def _run_thread(self, text):
-        if not self.chat:
-            self.callback("Session not initialized.", "error")
+        if not self.lock.acquire(blocking=False):
             return
+
+        self.is_busy = True
+
+        try:
+            if not self.chat:
+                self.callback("Session not initialized.", "error")
+                return
 
         try:
             stream = self.chat.send_message_stream(text)
@@ -145,7 +163,12 @@ class ChatManager:
         return final_history
 
     def save_history(self, filepath):
-        if not self.chat: return "No chat to save.", False
+        if self.lock.locked():
+            return "Cannot save while generating response.", False
+
+        if not self.chat:
+            return "No chat to save.", False
+
         try:
             # Ensure ASCII is false to support Unicode/Emoji
             hist_data = [
@@ -159,6 +182,9 @@ class ChatManager:
             return f"Save failed: {e}", False
 
     def load_history(self, filepath):
+        if self.lock.locked():
+            return None, "Cannot load while generating.", False
+
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)

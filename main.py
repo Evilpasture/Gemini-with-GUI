@@ -84,7 +84,10 @@ class App:
             self.client = genai.Client(api_key=self.api_key)
             self.populate_models()
         except Exception as e:
-            messagebox.showerror("Initialization Error", f"Failed to connect to Gemini. Check your internet connections:\n{e}")
+            messagebox.showerror(
+                "Initialization Error",
+                f"Failed to connect to Gemini. Check your internet connections:\n{e}"
+            )
             sys.exit(1)
 
         # 4. Init Chat Manager

@@ -4,6 +4,8 @@ from pathlib import Path
 import os
 import sys
 
+from google.genai.errors import APIError
+
 
 # --- Centralized Dependency Check ---
 def check_dependencies():
@@ -70,25 +72,37 @@ class App:
         # 1. Setup GUI (Pass empty model list first, populate later)
         self.gui = MainWindow(self.root, self, self.settings)
 
-        # 2. Check API Key
-        if not self.api_key:
-            self.api_key = self.ask_api_key(self.root)
+        # 2. Check API Key - 3. Init Client & Fetch Models
+        while True:
             if not self.api_key:
-                sys.exit(0)
-            # Save to env for next time
-            with open(".env", "w") as f:
-                f.write(f"\nGEMINI_API_KEY=\"{self.api_key}\"\n")
+                self.api_key = self.ask_api_key(self.root)
+                if not self.api_key:
+                    sys.exit(0)
+            try:
+                self.client = genai.Client(api_key=self.api_key)
+                self.client.models.list()
 
-        # 3. Init Client & Fetch Models
-        try:
-            self.client = genai.Client(api_key=self.api_key)
-            self.populate_models()
-        except Exception as e:
-            messagebox.showerror(
-                "Initialization Error",
-                f"Failed to connect to Gemini. Check your internet connections:\n{e}"
-            )
-            sys.exit(1)
+                # Save to env for next time
+                with open(".env", "w") as f:
+                    f.write(f"\nGEMINI_API_KEY=\"{self.api_key}\"\n")
+                break
+
+            except APIError as e:
+                error_message = str(e)
+                if "API_KEY_INVALID" in error_message:
+                    print("Invalid API Key")
+                    self.api_key = None
+                else:
+                    print(f"API Error: {error_message}")
+                    sys.exit(1)
+            except Exception as e:
+                messagebox.showerror(
+                    "Initialization Error",
+                    f"Failed to connect to Gemini. Check your internet connections:\n{e}"
+                )
+                sys.exit(1)
+
+        self.populate_models()
 
         # 4. Init Chat Manager
         self.chat_manager = ChatManager(

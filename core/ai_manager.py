@@ -77,11 +77,12 @@ class ChatManager:
                 self.callback("Session not initialized.", "error")
                 return
 
-        try:
             stream = self.chat.send_message_stream(text)
+
             for chunk in stream:
                 if chunk.text:
                     self.callback(chunk.text, "stream")
+
             self.callback(None, "finished")
 
         except errors.APIError as e:

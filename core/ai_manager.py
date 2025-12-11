@@ -171,14 +171,22 @@ class ChatManager:
             return "No chat to save.", False
 
         try:
-            # Ensure ASCII is false to support Unicode/Emoji
+            # Get raw history
+            raw_history = self.chat.get_history()
+
+            # Fix fragmentation (Model -> Model splits) AND text chunking
+            clean_history = self._consolidate_history(raw_history)
+
+            # Serialize
             hist_data = [
-                types.Content.model_dump(h, exclude_none=True)
-                for h in self.chat.get_history()
+                h.model_dump(mode='json', exclude_none=True)
+                for h in clean_history
             ]
+
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(hist_data, f, indent=2, ensure_ascii=False)
-            return f"Saved to {os.path.basename(filepath)}", True
+
+            return f"Saved clean history to {os.path.basename(filepath)}", True
         except Exception as e:
             return f"Save failed: {e}", False
 
@@ -189,9 +197,13 @@ class ChatManager:
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            # Reconstruct Google Types
+
+            # Load into SDK types
             history = [types.Content(**d) for d in data]
-            self.init_chat(history)
+
+            with self.lock:
+                self.init_chat(history)
+
             return history, "Loaded successfully", True
         except Exception as e:
             return None, f"Load failed: {e}", False

@@ -202,7 +202,6 @@ class MainWindow:
 
         self.controller.process_input(text)
 
-    # REFACTOR: Callback Logic
     def on_response_received(self, text, status):
         # Schedule GUI update on main thread
         self.root.after_idle(lambda: self._handle_stream(text, status))

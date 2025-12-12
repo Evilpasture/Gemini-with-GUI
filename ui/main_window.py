@@ -124,7 +124,7 @@ class MainWindow:
         self.send_btn = ttk.Button(input_frame, text="Send", command=self.send_message)
         self.send_btn.pack(side="right")
 
-        # --- STATUS BAR (Modified for Stopwatch) ---
+        # --- STATUS BAR ---
         status_frame = ttk.Frame(main_frame)
         status_frame.pack(side="bottom", fill="x", pady=(5, 0))
 

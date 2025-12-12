@@ -3,10 +3,45 @@ from tkinter import ttk
 import time
 try:
     from util.chat_text import ChatTextWidget
-    CHAT_TEXT = True
+    HasCustomWidget = True
 except ImportError:
-    print("Missing chat_text.py. Falling back to regular tk.Text")
-    CHAT_TEXT = False
+    print("Missing chat_text.py. Falling back to standard tk.Text with adapter.")
+    HasCustomWidget = False
+
+
+class StandardTextAdapter(tk.Text):
+    """
+    A wrapper around tk.Text to provide compatibility methods
+    if ChatTextWidget is missing. Prevents AttributeErrors.
+    """
+
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.configure(font=("Segoe UI", 10))  # Default font
+
+    def set_font_size(self, size):
+        current_font = self.cget("font")
+        # specific implementation depends on how you defined font originally,
+        # this is a basic safe fallback
+        self.configure(font=(current_font, size))
+
+    def append_message(self, role, name, text):
+        self.configure(state="normal")
+        self.insert("end", f"\n[{name}]: {text}\n")
+        self.configure(state="disabled")
+        self.see("end")
+
+    def append_chunk(self, text):
+        self.configure(state="normal")
+        self.insert("end", text)
+        self.configure(state="disabled")
+        self.see("end")
+
+    def finalize_formatting(self):
+        # No specific formatting in plain text mode
+        pass
+
+
 from .settings import PreferencesWindow
 
 

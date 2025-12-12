@@ -89,7 +89,7 @@ But I know you're responsible... right?""",
 
         # --- 3. App Tab ---
         self._grid_opt(f_app, 0, "Font Size:", ttk.Spinbox(f_app, from_=8, to=24, textvariable=self.v_font))
-        themes = ["arc", "yaru", "radiance", "breeze", "equilux"]
+        themes = ["arc", "yaru", "breeze", "radiance", "plastik"]
         self._grid_opt(f_app, 1, "Theme:", ttk.Combobox(f_app, textvariable=self.v_theme, values=themes))
 
         # --- Bottom Buttons ---

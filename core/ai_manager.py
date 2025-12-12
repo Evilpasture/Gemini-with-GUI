@@ -24,8 +24,8 @@ class ChatManager:
             if self.chat:
                 try:
                     history = self.chat.get_history()
-                except Exception:
-                    pass
+                except errors.APIError as e:
+                    print(f"History failed to load. {e}")
 
             self.settings = new_settings
             self.safety = new_safety

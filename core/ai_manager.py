@@ -205,5 +205,9 @@ class ChatManager:
                 self.init_chat(history)
 
             return history, "Loaded successfully", True
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            return None, f"Load failed: File I/O or JSON corruption: {e}", False
+        except (KeyError, TypeError, AttributeError) as e:
+            return None, f"Load failed: History data structure is invalid for SDK: {e}", False
         except Exception as e:
             return None, f"Load failed: {e}", False

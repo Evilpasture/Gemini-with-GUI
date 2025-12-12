@@ -100,10 +100,13 @@ class MainWindow:
         scrollbar.pack(side="right", fill="y")
 
         # Use the unified widget, or fallback to default tk.Text
-        if CHAT_TEXT:
+        if HasCustomWidget:
             self.chat_display = ChatTextWidget(chat_frame, yscrollcommand=scrollbar.set, wrap="word", relief="flat")
         else:
-            self.chat_display = tk.Text(chat_frame, yscrollcommand=scrollbar.set, wrap="word", relief="flat")
+            # Use the adapter instead of raw tk.Text
+            self.chat_display = StandardTextAdapter(chat_frame, yscrollcommand=scrollbar.set, wrap="word",
+                                                    relief="flat")
+
         self.chat_display.pack(side="left", fill="both", expand=True)
         scrollbar.config(command=self.chat_display.yview)
 

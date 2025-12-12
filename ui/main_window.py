@@ -17,6 +17,10 @@ class MainWindow:
         self.settings = settings
         self.available_models = []
 
+        # Stop watch state
+        self.start_time = 0
+        self.timer_running = False
+
         self.root.geometry("800x650")
         self.update_title()
 

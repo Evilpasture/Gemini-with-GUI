@@ -143,12 +143,12 @@ class MainWindow:
         self._mark_clean()
 
     def _on_text_modified(self, event=None):
-        """Called when the user types in the text box."""
-        # If it's already dirty, we don't need to do anything (performance optimization)
-        if self.is_text_dirty:
-            return
-
-        self.is_text_dirty = True
+        """Called automatically by Tkinter when text changes."""
+        # Only mark dirty if the widget explicitly says it's modified.
+        # This prevents the loop where resetting the flag triggers this event again.
+        if self.chat_display.edit_modified():
+            if not self.is_text_dirty:
+                self.is_text_dirty = True
 
     def _mark_clean(self):
         """Helper to reset the dirty state."""

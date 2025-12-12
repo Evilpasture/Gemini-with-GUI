@@ -270,5 +270,8 @@ class MainWindow:
             role = "user" if item.role == "user" else "ai"
             name = self.settings['user_name'] if role == "user" else self.settings['chatbot_name']
             # Safety check if parts exist
-            txt = item.parts[0].text if item.parts else ""
+            txt = ""
+            if hasattr(item, 'parts') and item.parts:
+                txt = item.parts[0].text
+
             self.chat_display.append_message(role, name, txt)

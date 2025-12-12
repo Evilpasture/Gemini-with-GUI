@@ -20,7 +20,6 @@ class MainWindow:
         self.root.geometry("800x650")
         self.update_title()
 
-        # REFACTOR: Theme handling centralized
         try:
             self.root.set_theme(settings['theme'])
         except Exception as e:

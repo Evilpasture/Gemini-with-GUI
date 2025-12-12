@@ -27,7 +27,7 @@ class MainWindow:
         try:
             self.root.set_theme(settings['theme'])
         except Exception as e:
-            print(f"Failed to load theme{e}")
+            print(f"Failed to load theme: {e}")
 
         self._build_menu()
         self._build_layout()

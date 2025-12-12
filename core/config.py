@@ -54,22 +54,12 @@ class ConfigManager:
 
     def get_settings(self):
         """Returns the dictionary from config file."""
-        # Integer conversion
-        # It's a headache to make things robust when one of which is just as simple as this.
-        try:
-            f_size = self.parser.getint('SETTINGS', 'FONT_SIZE')
-        except (ValueError, configparser.NoSectionError, configparser.NoOptionError):
-            f_size = 11
-        except Exception as e:
-            print(f"An error occurred while reading the config file: {e}")
-            f_size = 11
-
         return {
             'model_name': self.parser.get('SETTINGS', 'MODEL_NAME', fallback='gemini-2.5-flash'),
             'user_name': self.parser.get('SETTINGS', 'USER_NAME', fallback='User'),
             'chatbot_name': self.parser.get('SETTINGS', 'CHATBOT_NAME', fallback='Gemini'),
             'instruction': self.parser.get('SETTINGS', 'INSTRUCTION', fallback=''),
-            'font_size': f_size,
+            'font_size': self.parser.getint('SETTINGS', 'FONT_SIZE', fallback=11),
             'temperature': self.parser.getfloat('SETTINGS', 'TEMPERATURE', fallback=0.7),
             'theme': self.parser.get('SETTINGS', 'THEME', fallback='arc')
         }

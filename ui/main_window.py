@@ -239,7 +239,6 @@ class MainWindow:
         if self.timer_running:
             elapsed = time.time() - self.start_time
             self.time_lbl.config(text=f"{elapsed:.1f}s")
-            # Update every 100ms instead of 50ms to save CPU for text rendering
             self.root.after(100, self._update_timer)
 
     def _stop_stopwatch(self):

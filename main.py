@@ -190,8 +190,6 @@ if __name__ == "__main__":
             windll.shcore.SetProcessDpiAwareness(1)
         except (ImportError, AttributeError): # If you're using non-Windows...
             pass
-    else:
-        pass
 
     root = ThemedTk(theme="arc")
     app = App(root)

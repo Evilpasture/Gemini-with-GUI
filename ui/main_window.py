@@ -251,7 +251,10 @@ class MainWindow:
         self.chat_display.configure(state="normal")
         self.chat_display.delete("1.0", tk.END)
         self.chat_display.configure(state="disabled")
-        self.is_text_dirty = False
+
+        # Resetting UI counts as a modification, but usually, a "New Chat" is considered "Clean".
+        self._mark_clean()
+
         self.append_system_msg("Session Reset.", True)
 
     def append_system_msg(self, text, success=True):

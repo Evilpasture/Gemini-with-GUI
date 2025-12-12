@@ -242,9 +242,10 @@ class MainWindow:
             self.root.after(100, self._update_timer)
 
     def _stop_stopwatch(self):
-        self.timer_running = False
-        elapsed = time.time() - self.start_time
-        self.time_lbl.config(text=f"{elapsed:.2f}s")
+        if self.timer_running:
+            self.timer_running = False
+            elapsed = time.time() - self.start_time
+            self.time_lbl.config(text=f"{elapsed:.2f}s")
 
     def reset_ui(self):
         self.chat_display.configure(state="normal")

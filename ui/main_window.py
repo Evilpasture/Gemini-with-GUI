@@ -23,8 +23,8 @@ class MainWindow:
         # REFACTOR: Theme handling centralized
         try:
             self.root.set_theme(settings['theme'])
-        except:
-            pass
+        except Exception as e:
+            print(f"Failed to load theme{e}")
 
         self._build_menu()
         self._build_layout()

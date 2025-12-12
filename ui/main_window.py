@@ -153,9 +153,6 @@ class MainWindow:
     def _mark_clean(self):
         """Helper to reset the dirty state."""
         self.is_text_dirty = False
-
-        # Tkinter specific: Reset the internal modified flag so the
-        # <<Modified>> event can fire again on the next edit.
         self.chat_display.edit_modified(False)
 
     def is_dirty(self):

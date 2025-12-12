@@ -275,3 +275,7 @@ class MainWindow:
                 txt = item.parts[0].text
 
             self.chat_display.append_message(role, name, txt)
+
+        # After loading history, the text is technically "modified" by the loop,
+        # but semantically, a loaded file is "Clean".
+        self._mark_clean()

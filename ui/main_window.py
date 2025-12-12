@@ -150,6 +150,10 @@ class MainWindow:
             if not self.is_text_dirty:
                 self.is_text_dirty = True
 
+        # Optional: Update window title to show asterisk (*)
+        # Probably will add, some time later
+        # self.root.title(self.root.title() + " *")
+
     def _mark_clean(self):
         """Helper to reset the dirty state."""
         self.is_text_dirty = False

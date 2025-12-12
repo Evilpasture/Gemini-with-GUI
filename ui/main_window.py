@@ -38,8 +38,8 @@ class MainWindow:
 
         file_menu = tk.Menu(menubar, tearoff=0)
         file_menu.add_command(label="New Chat", command=self.controller.restart_chat)
-        file_menu.add_command(label="Save Chat...", command=self.controller.save_chat)
-        file_menu.add_command(label="Load Chat...", command=self.controller.load_chat)
+        file_menu.add_command(label="Save Chat...", command=self._on_save)
+        file_menu.add_command(label="Load Chat...", command=self._on_load)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.controller.on_closing)
         menubar.add_cascade(label="File", menu=file_menu)
@@ -93,8 +93,28 @@ class MainWindow:
         self.time_lbl = ttk.Label(status_frame, text="", foreground="#0056b3")  # Blue timer
         self.time_lbl.pack(side="right")
 
+    def _on_save(self):
+        self.controller.save_chat()
+        self._mark_clean()
+
+    def _on_load(self):
+        self.controller.load_chat()
+        self._mark_clean()
+
     def _on_text_modified(self, event=None):
+        """Called when the user types in the text box."""
+        # If it's already dirty, we don't need to do anything (performance optimization)
+        if self.is_text_dirty:
+            return
+
         self.is_text_dirty = True
+
+    def _mark_clean(self):
+        """Helper to reset the dirty state."""
+        self.is_text_dirty = False
+
+        # Tkinter specific: Reset the internal modified flag so the
+        # <<Modified>> event can fire again on the next edit.
         self.chat_display.edit_modified(False)
 
     def is_dirty(self):

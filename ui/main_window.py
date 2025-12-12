@@ -220,6 +220,7 @@ class MainWindow:
             self.input_entry.focus()
             self.status_lbl.config(text="Ready")
         elif status == "error":
+            self._stop_stopwatch()
             self.chat_display.configure(state="normal")
             self.chat_display.insert("end", f"\n[Error: {text}]\n", "error")
             self.chat_display.configure(state="disabled")

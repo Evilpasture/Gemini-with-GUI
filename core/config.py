@@ -58,7 +58,10 @@ class ConfigManager:
         # It's a headache to make things robust when one of which is just as simple as this.
         try:
             f_size = self.parser.getint('SETTINGS', 'FONT_SIZE')
-        except:
+        except (ValueError, configparser.NoSectionError, configparser.NoOptionError):
+            f_size = 11
+        except Exception as e:
+            print(f"An error occurred while reading the config file: {e}")
             f_size = 11
 
         return {

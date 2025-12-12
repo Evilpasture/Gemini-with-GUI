@@ -184,10 +184,13 @@ class App:
 
 if __name__ == "__main__":
     # high DPI awareness, just because.
-    try:
-        from ctypes import windll
-        windll.shcore.SetProcessDpiAwareness(1)
-    except: # If you're using non-Windows...
+    if sys.platform.startswith("win"):
+        try:
+            from ctypes import windll
+            windll.shcore.SetProcessDpiAwareness(1)
+        except (ImportError, AttributeError): # If you're using non-Windows...
+            pass
+    else:
         pass
 
     root = ThemedTk(theme="arc")

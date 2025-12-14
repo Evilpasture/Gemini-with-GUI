@@ -82,7 +82,7 @@ class App:
                 self.client = genai.Client(api_key=self.api_key)
                 self.client.models.list()
 
-                # Save to env for next time
+                # Overwrite .env file. It's fine because this program only needs the API key.
                 with open(".env", "w") as f:
                     f.write(f"\nGEMINI_API_KEY=\"{self.api_key}\"\n")
                 break

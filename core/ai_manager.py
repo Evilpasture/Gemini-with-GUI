@@ -47,7 +47,7 @@ class ChatManager:
             )
 
             self.chat = self.client.chats.create(
-                model=self.settings.get('model_name', 'gemini-2.0-flash'),
+                model=self.settings.get('model_name', 'gemini-2.5-flash'),
                 config=config,
                 history=history or []
             )

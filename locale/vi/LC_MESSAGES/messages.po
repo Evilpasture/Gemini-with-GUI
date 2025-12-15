@@ -5,11 +5,11 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: PROJECT VERSION\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"Project-Id-Version: v1.1.2\n"
+"Report-Msgid-Bugs-To: None(yet)\n"
 "POT-Creation-Date: 2025-12-15 20:36+0700\n"
-"PO-Revision-Date: 2025-12-15 20:36+0700\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"PO-Revision-Date: 2025-12-15 20:45+0700\n"
+"Last-Translator: Anonymous <anon>\n"
 "Language: vi\n"
 "Language-Team: vi <LL@li.org>\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -21,201 +21,202 @@ msgstr ""
 #: main.py:29
 #, python-format
 msgid "CRITICAL: Missing libraries: %s"
-msgstr ""
+msgstr "LỖI NGHIÊM TRỌNG: Thiếu thư viện: %s"
 
 #: main.py:33
 #, python-format
 msgid "Run: pip install %s"
-msgstr ""
+msgstr "Chạy lệnh: pip install %s"
 
 #: main.py:69
 #, python-format
 msgid "Application files missing. Trace: %s"
-msgstr ""
+msgstr "Thiếu tệp ứng dụng. Trace: %s"
 
 #: main.py:71
 msgid "Internal Error"
-msgstr ""
+msgstr "Lỗi nội bộ"
 
 #: main.py:111
 msgid "Invalid API Key"
-msgstr ""
+msgstr "API Key không hợp lệ"
 
 #: main.py:114
 #, python-format
 msgid "API Error: %s"
-msgstr ""
+msgstr "Lỗi API: %s"
 
 #: main.py:118
 #, python-format
 msgid "Failed to connect to Gemini. Check your internet connections: %s"
-msgstr ""
+msgstr "Không thể kết nối với Gemini. Vui lòng kiểm tra kết nối mạng: %s"
 
 #: main.py:121
 msgid "Initialization Error"
-msgstr ""
+msgstr "Lỗi khởi tạo"
 
 #: main.py:149
 #, python-format
 msgid "Model list warning: %s"
-msgstr ""
+msgstr "Cảnh báo danh sách mô hình: %s"
 
 #: main.py:156
 msgid "API Key Required"
-msgstr ""
+msgstr "Yêu cầu API Key"
 
 #: main.py:156
 msgid "Enter Google GenAI API Key:"
-msgstr ""
+msgstr "Nhập Google GenAI API Key:"
 
 #: main.py:198
 msgid "Save?"
-msgstr ""
+msgstr "Lưu?"
 
 #: main.py:198
 msgid "Save chat history before closing?"
-msgstr ""
+msgstr "Bạn có muốn lưu lịch sử chat trước khi đóng không?"
 
 #: ui/dialog.py:30
 msgid "OK"
-msgstr ""
+msgstr "OK"
 
 #: ui/dialog.py:43
 msgid "Required"
-msgstr ""
+msgstr "Bắt buộc"
 
 #: ui/dialog.py:43
 msgid "Input cannot be empty."
-msgstr ""
+msgstr "Dữ liệu không được để trống."
 
 #: ui/main_window.py:13
 msgid "Missing chat_text.py. Falling back to standard tk.Text with adapter."
-msgstr ""
+msgstr "Thiếu tệp chat_text.py. Đang chuyển sang dùng tk.Text chuẩn với bộ chuyển đổi."
 
 #: ui/main_window.py:70
 #, python-format
 msgid "Failed to load theme: %s"
-msgstr ""
+msgstr "Không thể tải giao diện: %s"
 
 #: ui/main_window.py:84
 msgid "New Chat"
-msgstr ""
+msgstr "Đoạn chat mới"
 
 #: ui/main_window.py:85
 msgid "Save Chat..."
-msgstr ""
+msgstr "Lưu đoạn chat..."
 
 #: ui/main_window.py:86
 msgid "Load Chat..."
-msgstr ""
+msgstr "Mở đoạn chat..."
 
 #: ui/main_window.py:88
 msgid "Exit"
-msgstr ""
+msgstr "Thoát"
 
 #: ui/main_window.py:89
 msgid "File"
-msgstr ""
+msgstr "Tệp"
 
 #: ui/main_window.py:92 ui/settings.py:25
 msgid "Settings"
-msgstr ""
+msgstr "Cài đặt"
 
 #: ui/main_window.py:93
 msgid "Tools"
-msgstr ""
+msgstr "Công cụ"
 
 #: ui/main_window.py:137 ui/main_window.py:230
 msgid "Ready"
-msgstr ""
+msgstr "Sẵn sàng"
 
 #: ui/main_window.py:179
 #, python-format
 msgid "Something bad happened when updating themes in settings. %s"
-msgstr ""
+msgstr "Đã xảy ra lỗi khi cập nhật giao diện trong cài đặt. %s"
 
 #: ui/main_window.py:183
 #, python-format
 msgid "Chat - %s"
-msgstr ""
+msgstr "Chat - %s"
 
 #: ui/main_window.py:198
 msgid "Thinking..."
-msgstr ""
+msgstr "Đang suy nghĩ..."
 
 #: ui/main_window.py:234
 #, python-format
 msgid "Error: %s"
-msgstr ""
+msgstr "Lỗi: %s"
 
 #: ui/main_window.py:240
 msgid "Error"
-msgstr ""
+msgstr "Lỗi"
 
 #: ui/main_window.py:269
 msgid "Session Reset."
-msgstr ""
+msgstr "Đã đặt lại phiên."
 
 #: ui/main_window.py:274
 #, python-format
 msgid "System: %s"
-msgstr ""
+msgstr "Hệ thống: %s"
 
 #: ui/settings.py:62
 msgid "AI Parameters"
-msgstr ""
+msgstr "Tham số AI"
 
 #: ui/settings.py:63
 msgid "Safety Filters"
-msgstr ""
+msgstr "Bộ lọc an toàn"
 
 #: ui/settings.py:64
 msgid "Appearance"
-msgstr ""
+msgstr "Giao diện"
 
 #: ui/settings.py:75
 msgid "Language:"
-msgstr ""
+msgstr "Ngôn ngữ:"
 
 #: ui/settings.py:77
 msgid "(Requires Restart)"
-msgstr ""
+msgstr "(Cần khởi động lại)"
 
 #: ui/settings.py:80
 msgid "Model:"
-msgstr ""
+msgstr "Mô hình:"
 
 #: ui/settings.py:82
 msgid "Creativity (Temp):"
-msgstr ""
+msgstr "Sáng tạo (Temp):"
 
 #: ui/settings.py:86
 msgid "Your Name:"
-msgstr ""
+msgstr "Tên bạn:"
 
 #: ui/settings.py:87
 msgid "Bot Name:"
-msgstr ""
+msgstr "Tên Bot:"
 
 #: ui/settings.py:89
 msgid "Instructions:"
-msgstr ""
+msgstr "Chỉ dẫn hệ thống:"
 
 #: ui/settings.py:104
 msgid ""
 "Note: 'Block None' may result in unfiltered or unstable content. Make "
 "sure the filters are appropriate for your intended work."
 msgstr ""
+"Lưu ý: 'Block None' có thể dẫn đến nội dung không được lọc hoặc không ổn định. "
+"Hãy đảm bảo các bộ lọc phù hợp với mục đích sử dụng của bạn."
 
 #: ui/settings.py:111
 msgid "Font Size:"
-msgstr ""
+msgstr "Cỡ chữ:"
 
 #: ui/settings.py:118
 msgid "Save & Apply"
-msgstr ""
+msgstr "Lưu & Áp dụng"
 
 #: ui/settings.py:119
 msgid "Cancel"
-msgstr ""
-
+msgstr "Hủy"

@@ -15,6 +15,8 @@ class ChatManager:
         self.lock = threading.Lock()
         self.is_busy = False
 
+        self.role_map = {}
+
         self.init_chat()
 
     def update_settings(self, new_settings, new_safety):
@@ -33,10 +35,12 @@ class ChatManager:
 
     def init_chat(self, history=None):
         try:
+            username = self.settings.get('user_name', 'User')
+            chatbot_name = self.settings.get('chatbot_name', 'Gemini')
             # Explicitly instruct model to use Markdown just in case
             sys_instruct = (
                 f"{self.settings.get('instruction', '')}\n"
-                f"You are talking to {self.settings.get('user_name', 'User')}. "
+                f"You are talking to {username}. "
                 "Format responses in Markdown."
             )
 
@@ -51,6 +55,11 @@ class ChatManager:
                 config=config,
                 history=history or []
             )
+
+            self.role_map = {
+                'user': username,
+                'model': chatbot_name
+            }
         except Exception as e:
             self.callback(f"System Error: Failed to init model.\n{e}", "error")
 

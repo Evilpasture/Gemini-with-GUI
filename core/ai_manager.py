@@ -183,16 +183,23 @@ class ChatManager:
             raw_history = self.chat.get_history()
             clean_history = self._consolidate_history(raw_history)
 
-            # Serialize
-            hist_data = [
-                h.model_dump(mode='json', exclude_none=True)
-                for h in clean_history
-            ]
+            # Convert objects to JSON-serializable dicts
+            hist_data = [h.model_dump(mode='json', exclude_none=True) for h in clean_history]
+
+            # CREATE A WRAPPER OBJECT
+            save_package = {
+                "metadata": {
+                    "user_name": self.settings.get('user_name', 'User'),
+                    "chatbot_name": self.settings.get('chatbot_name', 'Gemini'),
+                    "instruction": self.settings.get('instruction', '')
+                },
+                "history": hist_data
+            }
 
             with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(hist_data, f, indent=2, ensure_ascii=False)
+                json.dump(save_package, f, indent=2, ensure_ascii=False)
 
-            return f"Saved clean history to {os.path.basename(filepath)}", True
+            return f"Saved session to {os.path.basename(filepath)}", True
         except Exception as e:
             return f"Save failed: {e}", False
 

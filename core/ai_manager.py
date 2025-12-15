@@ -209,18 +209,29 @@ class ChatManager:
 
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+                package = json.load(f)
 
-            # Load into SDK types
-            history = [types.Content(**d) for d in data]
+            # Check if it's the new format or the old list-only format
+            if isinstance(package, dict) and "history" in package:
+                metadata = package.get("metadata", {})
+                history_raw = package.get("history", [])
+
+                # Update settings with names from the file
+                self.settings['user_name'] = metadata.get('user_name', self.settings.get('user_name'))
+                self.settings['chatbot_name'] = metadata.get('chatbot_name', self.settings.get('chatbot_name'))
+                self.settings['instruction'] = metadata.get('instruction', self.settings.get('instruction'))
+            else:
+                # Fallback for old files that are just a list
+                history_raw = package
+
+            # Convert dicts back to SDK types
+            history = [types.Content(**d) for d in history_raw]
 
             with self.lock:
+                # Re-initialize with the loaded history and updated settings
                 self.init_chat(history)
 
-            return history, "Loaded successfully", True
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            return None, f"Load failed: File I/O or JSON corruption: {e}", False
-        except (KeyError, TypeError, AttributeError) as e:
-            return None, f"Load failed: History data structure is invalid for SDK: {e}", False
+            return history, "Loaded successfully with names", True
+
         except Exception as e:
             return None, f"Load failed: {e}", False

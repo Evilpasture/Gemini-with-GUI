@@ -28,6 +28,10 @@ A lightweight, desktop-based chat interface for Google's Gemini models built wit
 
 ## Setup
 
+### Get your API key
+
+https://aistudio.google.com/api-keys
+
 ### Create, then activate the Python virtual environment(based on your OS)
 
 1. Create

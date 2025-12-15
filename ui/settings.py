@@ -1,6 +1,7 @@
-def _(text):
-    """Placeholder for the gettext translation function."""
-    return text
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    def _(s: str) -> str: ...
 
 
 import tkinter as tk

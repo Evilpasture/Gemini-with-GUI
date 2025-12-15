@@ -1,11 +1,13 @@
-def _(text):
-    """Placeholder for the gettext translation function."""
-    return text
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    def _(s: str) -> str: ...
 
 
 import tkinter as tk
 from tkinter import ttk
 import time
+
 try:
     from util.chat_text import ChatTextWidget
     HasCustomWidget = True

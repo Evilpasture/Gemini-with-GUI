@@ -1,6 +1,7 @@
-def _(text):
-    """Placeholder for the gettext translation function."""
-    return text
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    def _(s: str) -> str: ...
 
 
 import tkinter as tk
@@ -31,8 +32,8 @@ class Dialog(tk.Toplevel):
 
     def _center(self, parent):
         self.update_idletasks()
-        x = parent.winfo_rootx() + (parent.winfo_width() // 2) - (150)
-        y = parent.winfo_rooty() + (parent.winfo_height() // 2) - (75)
+        x = parent.winfo_rootx() + (parent.winfo_width() // 2) - 150
+        y = parent.winfo_rooty() + (parent.winfo_height() // 2) - 75
         self.geometry(f"+{x}+{y}")
 
     def submit(self):

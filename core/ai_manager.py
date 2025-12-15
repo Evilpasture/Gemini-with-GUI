@@ -180,10 +180,7 @@ class ChatManager:
             return "No chat to save.", False
 
         try:
-            # Get raw history
             raw_history = self.chat.get_history()
-
-            # Fix fragmentation (Model -> Model splits) AND text chunking
             clean_history = self._consolidate_history(raw_history)
 
             # Serialize

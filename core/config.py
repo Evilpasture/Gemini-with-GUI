@@ -27,7 +27,8 @@ DEFAULT_CONFIG = {
         'INSTRUCTION': 'You are a helpful AI assistant.',
         'FONT_SIZE': '11',
         'TEMPERATURE': '0.7',
-        'THEME': 'arc'  # Default visual theme
+        'THEME': 'arc',  # Default visual theme
+        'LANGUAGE': 'en',
     },
     'SAFETY': {
         'HARASSMENT': 'BLOCK_MEDIUM_AND_ABOVE',
@@ -61,7 +62,8 @@ class ConfigManager:
             'instruction': self.parser.get('SETTINGS', 'INSTRUCTION', fallback=''),
             'font_size': self.parser.getint('SETTINGS', 'FONT_SIZE', fallback=11),
             'temperature': self.parser.getfloat('SETTINGS', 'TEMPERATURE', fallback=0.7),
-            'theme': self.parser.get('SETTINGS', 'THEME', fallback='arc')
+            'theme': self.parser.get('SETTINGS', 'THEME', fallback='arc'),
+            'language': self.parser.get('SETTINGS', 'LANGUAGE', fallback='en'),
         }
 
     def get_safety_settings(self):

@@ -1,3 +1,8 @@
+def _(text):
+    """Placeholder for the gettext translation function."""
+    return text
+
+
 import tkinter as tk
 from tkinter import messagebox
 from pathlib import Path
@@ -21,9 +26,14 @@ def check_dependencies():
             missing.append(pip_name)
 
     if missing:
-        # We can't use tk.messagebox easily before root, but simple print/sys.exit is safer here
-        print(f"CRITICAL: Missing libraries: {', '.join(missing)}")
-        print(f"Run: pip install {' '.join(missing)}")
+        warning_template = _("CRITICAL: Missing libraries: %s")
+        missing_list_formatted = ', '.join(missing)
+        print(warning_template % missing_list_formatted)
+
+        run_template = _("Run: pip install %s")
+        install_command = ' '.join(missing)
+        print(run_template % install_command)
+
         sys.exit(1)
 
 
@@ -43,14 +53,22 @@ if str(SCRIPT_DIR) not in sys.path:
 # Consolidated imports to catch structural errors early
 try:
     from core.config import ConfigManager
+
+    config_manager = ConfigManager()
+    settings = config_manager.get_settings()
+
+    from core.i18n import setup_i18n
+    setup_i18n(settings['language'])
+
     from core.ai_manager import ChatManager
     from ui.main_window import MainWindow
     from ui.dialog import Dialog
 except ImportError as e:
-    # Minimal TK root just to show error
     r = tk.Tk()
     r.withdraw()
-    messagebox.showerror("Internal Error", f"Application files missing.\nTrace: {e}")
+    _error_template = _("Application files missing. Trace: %s")
+    _output = f"{_error_template % e}\n{e}"
+    messagebox.showerror(_("Internal Error"), _output)
     sys.exit(1)
 
 load_dotenv()
@@ -90,15 +108,18 @@ class App:
             except APIError as e:
                 error_message = str(e)
                 if "API_KEY_INVALID" in error_message:
-                    print("Invalid API Key")
+                    print(_("Invalid API Key"))
                     self.api_key = None
                 else:
-                    print(f"API Error: {error_message}")
+                    _output = _("API Error: %s") % {error_message}
+                    print(_output)
                     sys.exit(1)
             except Exception as e:
+                _error_template = _("Failed to connect to Gemini. Check your internet connections: %s")
+                _output = _(f"{_error_template}\n{e}")
                 messagebox.showerror(
-                    "Initialization Error",
-                    f"Failed to connect to Gemini. Check your internet connections:\n{e}"
+                    _("Initialization Error"),
+                    _output
                 )
                 sys.exit(1)
 
@@ -125,13 +146,14 @@ class App:
             # Pass models to GUI for the settings dropdown
             self.gui.set_available_models(dynamic_models)
         except Exception as e:
-            print(f"Model list warning: {e}")
+            _output = _("Model list warning: %s" % e)
+            print(_output)
             # Fallback defaults
             self.gui.set_available_models(["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"])
 
     @staticmethod
     def ask_api_key(parent):
-        return Dialog.ask_string(parent, "API Key Required", "Enter Google GenAI API Key:", show="*")
+        return Dialog.ask_string(parent, _("API Key Required"), _("Enter Google GenAI API Key:"), show="*")
 
     def process_input(self, text):
         self.chat_manager.process_input(text)
@@ -173,7 +195,7 @@ class App:
 
     def on_closing(self):
         if self.gui.is_dirty():
-            confirm = messagebox.askyesnocancel("Save?", "Save chat history before closing?")
+            confirm = messagebox.askyesnocancel(_("Save?"), _("Save chat history before closing?"))
             if confirm:
                 self.save_chat()
             elif confirm is None:

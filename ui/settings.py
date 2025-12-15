@@ -1,3 +1,8 @@
+def _(text):
+    """Placeholder for the gettext translation function."""
+    return text
+
+
 import tkinter as tk
 from tkinter import ttk
 
@@ -17,7 +22,7 @@ class PreferencesWindow(tk.Toplevel):
         self.save_callback = save_callback
         self.models = models
 
-        self.title("Settings")
+        self.title(_("Settings"))
         self.geometry("450x550")  # Slightly taller for extra tab
         self.transient(parent)
         self.grab_set()
@@ -36,6 +41,7 @@ class PreferencesWindow(tk.Toplevel):
         self.v_bot = tk.StringVar(value=s.get('CHATBOT_NAME'))
         self.v_font = tk.IntVar(value=s.getint('FONT_SIZE'))
         self.v_theme = tk.StringVar(value=s.get('THEME'))
+        self.v_lang = tk.StringVar(value=self.config['SETTINGS'].get('LANGUAGE', 'en'))
 
         # Safety Settings
         # We loop through the keys defined in config.py
@@ -53,21 +59,34 @@ class PreferencesWindow(tk.Toplevel):
         f_safe = ttk.Frame(nb, padding=15)  # New Safety Tab
         f_app = ttk.Frame(nb, padding=15)
 
-        nb.add(f_gen, text="AI Parameters")
-        nb.add(f_safe, text="Safety Filters")
-        nb.add(f_app, text="Appearance")
+        nb.add(f_gen, text=_("AI Parameters"))
+        nb.add(f_safe, text=_("Safety Filters"))
+        nb.add(f_app, text=_("Appearance"))
 
         # --- 1. General Tab ---
-        self._grid_opt(f_gen, 0, "Model:", ttk.Combobox(f_gen, textvariable=self.v_model, values=self.models))
+        self.languages = {"English": "en", "Tiếng Việt": "vi"}
+        lang_names = list(self.languages.keys())
 
-        ttk.Label(f_gen, text="Creativity (Temp):").grid(row=1, column=0, sticky="w", pady=5)
+        current_code = self.v_lang.get()
+        current_name = next((k for k, v in self.languages.items() if v == current_code), "English")
+
+        self.cb_lang = ttk.Combobox(f_gen, values=lang_names, state="readonly")
+        self.cb_lang.set(current_name)
+        self._grid_opt(f_gen, 99, _("Language:"), self.cb_lang)
+
+        ttk.Label(f_gen, text=_("(Requires Restart)"), font=("Segoe UI", 8), foreground="gray").grid(row=100, column=1,
+                                                                                                     sticky="w")
+
+        self._grid_opt(f_gen, 0, _("Model:"), ttk.Combobox(f_gen, textvariable=self.v_model, values=self.models))
+
+        ttk.Label(f_gen, text=_("Creativity (Temp):")).grid(row=1, column=0, sticky="w", pady=5)
         sc = ttk.Scale(f_gen, from_=0.0, to=1.0, variable=self.v_temp)
         sc.grid(row=1, column=1, sticky="ew")
 
-        self._grid_opt(f_gen, 2, "Your Name:", ttk.Entry(f_gen, textvariable=self.v_user))
-        self._grid_opt(f_gen, 3, "Bot Name:", ttk.Entry(f_gen, textvariable=self.v_bot))
+        self._grid_opt(f_gen, 2, _("Your Name:"), ttk.Entry(f_gen, textvariable=self.v_user))
+        self._grid_opt(f_gen, 3, _("Bot Name:"), ttk.Entry(f_gen, textvariable=self.v_bot))
 
-        ttk.Label(f_gen, text="Instructions:").grid(row=4, column=0, sticky="nw", pady=5)
+        ttk.Label(f_gen, text=_("Instructions:")).grid(row=4, column=0, sticky="nw", pady=5)
         self.txt_instr = tk.Text(f_gen, height=5, width=20, font=("Segoe UI", 9))
         self.txt_instr.grid(row=4, column=1, sticky="ew")
         self.txt_instr.insert("1.0", self.config['SETTINGS'].get('INSTRUCTION', ''))
@@ -81,22 +100,23 @@ class PreferencesWindow(tk.Toplevel):
             self._grid_opt(f_safe, row_idx, label_text, cb)
             row_idx += 1
 
-        ttk.Label(f_safe, text=
-"""Note: 'Block None' may result in 
-unfiltered or unstable content. 
-But I know you're responsible... right?""",
+        _translated_text = \
+            _("Note: 'Block None' may result in unfiltered or unstable content. "
+              "Make sure the filters are appropriate for your intended work.")
+
+        ttk.Label(f_safe, text=_translated_text, wraplength=300,
                   foreground="gray").grid(row=row_idx, column=0, columnspan=2)
 
         # --- 3. App Tab ---
-        self._grid_opt(f_app, 0, "Font Size:", ttk.Spinbox(f_app, from_=8, to=24, textvariable=self.v_font))
+        self._grid_opt(f_app, 0, _("Font Size:"), ttk.Spinbox(f_app, from_=8, to=24, textvariable=self.v_font))
         themes = ["arc", "yaru", "breeze", "radiance", "plastik"]
         self._grid_opt(f_app, 1, "Theme:", ttk.Combobox(f_app, textvariable=self.v_theme, values=themes))
 
         # --- Bottom Buttons ---
         btns = ttk.Frame(self)
         btns.pack(fill="x", padx=10, pady=10)
-        ttk.Button(btns, text="Save & Apply", command=self.save).pack(side="right")
-        ttk.Button(btns, text="Cancel", command=self.destroy).pack(side="right", padx=5)
+        ttk.Button(btns, text=_("Save & Apply"), command=self.save).pack(side="right")
+        ttk.Button(btns, text=_("Cancel"), command=self.destroy).pack(side="right", padx=5)
 
     @staticmethod
     def _grid_opt(parent, row, label, widget):
@@ -113,6 +133,8 @@ But I know you're responsible... right?""",
         s['CHATBOT_NAME'] = self.v_bot.get()
         s['FONT_SIZE'] = str(self.v_font.get())
         s['THEME'] = self.v_theme.get()
+        selected_name = self.cb_lang.get()
+        s['LANGUAGE'] = self.languages.get(selected_name, 'en')
         s['INSTRUCTION'] = self.txt_instr.get("1.0", "end-1c").strip()
 
         # Save Safety

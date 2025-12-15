@@ -1,3 +1,8 @@
+def _(text):
+    """Placeholder for the gettext translation function."""
+    return text
+
+
 import tkinter as tk
 from tkinter import ttk
 import time
@@ -5,7 +10,7 @@ try:
     from util.chat_text import ChatTextWidget
     HasCustomWidget = True
 except ImportError:
-    print("Missing chat_text.py. Falling back to standard tk.Text with adapter.")
+    print(_("Missing chat_text.py. Falling back to standard tk.Text with adapter."))
     HasCustomWidget = False
 
 
@@ -62,7 +67,8 @@ class MainWindow:
         try:
             self.root.set_theme(settings['theme'])
         except Exception as e:
-            print(f"Failed to load theme: {e}")
+            _output = _("Failed to load theme: %s") % e
+            print(_output)
 
         self._build_menu()
         self._build_layout()
@@ -75,16 +81,16 @@ class MainWindow:
         menubar = tk.Menu(self.root)
 
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="New Chat", command=self.controller.restart_chat)
-        file_menu.add_command(label="Save Chat...", command=self._on_save)
-        file_menu.add_command(label="Load Chat...", command=self._on_load)
+        file_menu.add_command(label=_("New Chat"), command=self.controller.restart_chat)
+        file_menu.add_command(label=_("Save Chat..."), command=self._on_save)
+        file_menu.add_command(label=_("Load Chat..."), command=self._on_load)
         file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=self.controller.on_closing)
-        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label=_("Exit"), command=self.controller.on_closing)
+        menubar.add_cascade(label=_("File"), menu=file_menu)
 
         tools_menu = tk.Menu(menubar, tearoff=0)
-        tools_menu.add_command(label="Settings", command=self.show_settings)
-        menubar.add_cascade(label="Tools", menu=tools_menu)
+        tools_menu.add_command(label=_("Settings"), command=self.show_settings)
+        menubar.add_cascade(label=_("Tools"), menu=tools_menu)
 
         self.root.config(menu=menubar)
 
@@ -128,7 +134,7 @@ class MainWindow:
         status_frame = ttk.Frame(main_frame)
         status_frame.pack(side="bottom", fill="x", pady=(5, 0))
 
-        self.status_lbl = ttk.Label(status_frame, text="Ready", foreground="gray")
+        self.status_lbl = ttk.Label(status_frame, text=_("Ready"), foreground="gray")
         self.status_lbl.pack(side="left")
 
         self.time_lbl = ttk.Label(status_frame, text="", foreground="#0056b3")  # Blue timer
@@ -170,10 +176,13 @@ class MainWindow:
             if ttk.Style().theme_use() != settings['theme']:
                 self.root.set_theme(settings['theme'])
         except Exception as e:
-            print(f"Something bad happened when updating themes in settings. {e}")
+            _output = _("Something bad happened when updating themes in settings. %s") % e
+            print(_output)
 
     def update_title(self):
-        self.root.title(f"Gemini Chat - {self.settings['model_name']}")
+        translated_prefix = _("Chat - %s")
+        title = translated_prefix % self.settings['chatbot_name']
+        self.root.title(title)
 
     def show_settings(self):
         PreferencesWindow(self.root, self.controller.config_manager, self.controller.reload_settings,
@@ -186,7 +195,7 @@ class MainWindow:
         self.input_entry.delete(0, tk.END)
         self.input_entry.config(state="disabled")
         self.send_btn.config(state="disabled")
-        self.status_lbl.config(text="Thinking...")
+        self.status_lbl.config(text=_("Thinking..."))
 
         # Display User Message
         self.chat_display.append_message("user", self.settings['user_name'], text)
@@ -218,15 +227,17 @@ class MainWindow:
             self.input_entry.config(state="normal")
             self.send_btn.config(state="normal")
             self.input_entry.focus()
-            self.status_lbl.config(text="Ready")
+            self.status_lbl.config(text=_("Ready"))
         elif status == "error":
             self._stop_stopwatch()
             self.chat_display.configure(state="normal")
-            self.chat_display.insert("end", f"\n[Error: {text}]\n", "error")
+            _error_template = _("Error: %s")
+            _output = f"\n[{_error_template % text}]\n"
+            self.chat_display.insert("end", _output, "error")
             self.chat_display.configure(state="disabled")
             self.input_entry.config(state="normal")
             self.send_btn.config(state="normal")
-            self.status_lbl.config(text="Error")
+            self.status_lbl.config(text=_("Error"))
 
     # --- STOPWATCH LOGIC ---
     def _start_stopwatch(self):
@@ -255,12 +266,14 @@ class MainWindow:
         # Resetting UI counts as a modification, but usually, a "New Chat" is considered "Clean".
         self._mark_clean()
 
-        self.append_system_msg("Session Reset.", True)
+        self.append_system_msg(_("Session Reset."), True)
 
     def append_system_msg(self, text, success=True):
         tag = "system" if success else "error"
         self.chat_display.configure(state="normal")
-        self.chat_display.insert("end", f"\n[System: {text}]\n", tag)
+        _system_template = _("System: %s")
+        _output = f"\n[{_system_template % text}]\n"
+        self.chat_display.insert("end", _output, tag)
         self.chat_display.configure(state="disabled")
         self.chat_display.see("end")
 

@@ -1,3 +1,8 @@
+def _(text):
+    """Placeholder for the gettext translation function."""
+    return text
+
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -22,7 +27,7 @@ class Dialog(tk.Toplevel):
         entry.focus()
         entry.bind("<Return>", lambda e: self.submit())
 
-        ttk.Button(self, text="OK", command=self.submit).pack(pady=10)
+        ttk.Button(self, text=_("OK"), command=self.submit).pack(pady=10)
 
     def _center(self, parent):
         self.update_idletasks()
@@ -35,7 +40,7 @@ class Dialog(tk.Toplevel):
             self.result = self.var.get().strip()
             self.destroy()
         else:
-            messagebox.showwarning("Required", "Input cannot be empty.")
+            messagebox.showwarning(_("Required"), _("Input cannot be empty."))
 
     @staticmethod
     def ask_string(parent, title, prompt, show=None):

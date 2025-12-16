@@ -1,3 +1,8 @@
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    def _(s: str) -> str: ...
+
 import threading
 import json
 import os # for error handling
@@ -41,7 +46,10 @@ class ChatManager:
             sys_instruct = (
                 f"{self.settings.get('instruction', '')}\n"
                 f"You are talking to {username}. "
-                "Format responses in Markdown."
+                "Format responses in Markdown. "
+                f"User is using \"{self.settings.get('language', 'en')}\" "
+                "in their configurations for added context, but otherwise, "
+                "reply with the same language as the prompt just normally."
             )
 
             config = types.GenerateContentConfig(
@@ -61,14 +69,16 @@ class ChatManager:
                 'model': chatbot_name
             }
         except Exception as e:
-            self.callback(f"System Error: Failed to init model.\n{e}", "error")
+            _error_template = _("System Error: Failed to init model. %s")
+            _output = _error_template % e
+            self.callback(_output, "error")
 
     def process_input(self, text):
         """Starts the API call in a separate thread."""
         if not text.strip(): return
 
         if self.lock.locked():
-            self.callback("Please wait for the current message to finish.", "warning")
+            self.callback(_("Please wait for the current message to finish."), "warning")
             return
 
         t = threading.Thread(target=self._run_thread, args=(text,))
@@ -83,7 +93,7 @@ class ChatManager:
 
         try:
             if not self.chat:
-                self.callback("Session not initialized.", "error")
+                self.callback(_("Session not initialized."), "error")
                 return
 
             stream = self.chat.send_message_stream(text)
@@ -95,9 +105,13 @@ class ChatManager:
             self.callback(None, "finished")
 
         except errors.APIError as e:
-            self.callback(f"API Error: {e.message}", "error")
+            _error_template = _("API Error: %s")
+            _output = _error_template % e.message
+            self.callback(_output, "error")
         except Exception as e:
-            self.callback(f"Connection Error: {e}", "error")
+            _error_template = _("Connection Error: %s")
+            _output = _error_template % e
+            self.callback(_output, "error")
         finally:
             self.is_busy = False
             self.lock.release()
@@ -174,10 +188,10 @@ class ChatManager:
 
     def save_history(self, filepath):
         if self.lock.locked():
-            return "Cannot save while generating response.", False
+            return _("Cannot save while generating response."), False
 
         if not self.chat:
-            return "No chat to save.", False
+            return _("No chat to save."), False
 
         try:
             raw_history = self.chat.get_history()
@@ -199,13 +213,17 @@ class ChatManager:
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(save_package, f, indent=2, ensure_ascii=False)
 
-            return f"Saved session to {os.path.basename(filepath)}", True
+            _prefix = _("Saved session to %s")
+            _output = _prefix % os.path.basename(filepath)
+            return _output, True
         except Exception as e:
-            return f"Save failed: {e}", False
+            _error_template = _("Save failed: %s")
+            _output = _error_template % e
+            return _output, False
 
     def load_history(self, filepath):
         if self.lock.locked():
-            return None, "Cannot load while generating.", False
+            return None, _("Cannot load while generating."), False
 
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
@@ -231,7 +249,9 @@ class ChatManager:
                 # Re-initialize with the loaded history and updated settings
                 self.init_chat(history)
 
-            return history, "Loaded successfully with names", True
+            return history, _("Loaded successfully"), True
 
         except Exception as e:
-            return None, f"Load failed: {e}", False
+            _error_template = _("Load failed: %s")
+            _output = _error_template % e
+            return None, _output, False

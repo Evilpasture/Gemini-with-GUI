@@ -89,6 +89,39 @@ class ChatManager:
             _output = _error_template % e
             self.callback(_output, "error")
 
+    def summarize_old_history(self):
+        """Compresses oldest messages into long-term memory.
+
+        Hopefully, it will mock you for prompting embarrassing things."""
+        if len(self.history) < 30:
+            return
+        to_summarize = self.history[1:11]
+        summary_prompt = (
+            "Briefly summarize the key facts from this conversation history into 2-3 sentences. "
+            "Focus on user preferences, current tasks. Poke fun if it's strange and be playful."
+            "If it's a roleplay, summarize the roleplay for reuse in future conversations with the same characters."
+        )
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.current_model,
+                messages=to_summarize + [{"role": "user", "content": summary_prompt}],
+                temperature=0.3  # Low temperature for factual summary
+            )
+
+            new_facts = response.choices[0].message.content
+            # Update memory and remove the summarized messages
+            self.memory = f"{self.memory} {new_facts}".strip()
+            self.history = [self.history[0]] + self.history[11:]
+
+            # Re-init to update the system prompt with new memory
+            self.init_chat(history=self.history)
+
+        except Exception as e:
+            _error_template = _("Memory Compression Failed: %s")
+            print(_error_template % e)
+
+
     def process_input(self, text):
         """Starts the API call in a separate thread."""
         if not text.strip(): return

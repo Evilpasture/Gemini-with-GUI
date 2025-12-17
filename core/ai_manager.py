@@ -223,36 +223,32 @@ class ChatManager:
         if self.lock.locked():
             return _("Cannot save while generating response."), False
 
-        if not self.chat:
+        # Check the new list instead of the old self.chat object
+        if not hasattr(self, 'history') or not self.history:
             return _("No chat to save."), False
 
         try:
-            raw_history = self.chat.get_history()
-            clean_history = self._consolidate_history(raw_history)
+            # 1. Consolidate history (using your new OpenAI-style logic)
+            clean_history = self._consolidate_history(self.history)
 
-            # Convert objects to JSON-serializable dicts
-            hist_data = [h.model_dump(mode='json', exclude_none=True) for h in clean_history]
-
-            # CREATE A WRAPPER OBJECT
+            # 2. Prepare the wrapper (History is already dicts, so no model_dump needed)
             save_package = {
                 "metadata": {
                     "user_name": self.settings.get('user_name', 'User'),
                     "chatbot_name": self.settings.get('chatbot_name', 'Gemini'),
-                    "instruction": self.settings.get('instruction', '')
+                    "instruction": self.settings.get('instruction', ''),
+                    "memory": self.memory
                 },
-                "history": hist_data
+                "history": clean_history
             }
 
+            # 3. Write to file
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(save_package, f, indent=2, ensure_ascii=False)
 
-            _prefix = _("Saved session to %s")
-            _output = _prefix % os.path.basename(filepath)
-            return _output, True
+            return _("Saved session to %s") % os.path.basename(filepath), True
         except Exception as e:
-            _error_template = _("Save failed: %s")
-            _output = _error_template % e
-            return _output, False
+            return _("Save failed: %s") % str(e), False
 
     def load_history(self, filepath):
         if self.lock.locked():

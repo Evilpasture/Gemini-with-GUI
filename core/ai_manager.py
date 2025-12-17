@@ -182,7 +182,8 @@ class ChatManager:
             self.callback(_output, "error")
         finally:
             self.is_busy = False
-            self.lock.release()
+            if self.lock.locked():
+                self.lock.release()
 
     @staticmethod
     def _consolidate_history(raw_history):

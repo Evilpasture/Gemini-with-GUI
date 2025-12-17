@@ -51,29 +51,8 @@ class ConfigManager:
         }
 
     def get_safety_settings(self):
-        s = self.parser['SAFETY']
-        return [
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                threshold=THRESHOLD_MAP.get(s.get('HARASSMENT'), types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE)
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                threshold=THRESHOLD_MAP.get(s.get('HATE_SPEECH'), types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE)
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold=THRESHOLD_MAP.get(s.get('DANGEROUS'), types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE)
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                threshold=THRESHOLD_MAP.get(s.get('SEXUAL'), types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE)
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
-                threshold=THRESHOLD_MAP.get(s.get('CIVIC'), types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE)
-            ),
-        ]
+        """Returns just the string values, no Google-specific types."""
+        return {k.lower(): self.parser.get('SAFETY', k.lower()) for k in DEFAULT_CONFIG['SAFETY']}
 
     def get_parser(self):
         """Returns the raw parser object (needed for the Preferences Window)."""

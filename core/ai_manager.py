@@ -70,11 +70,15 @@ class ChatManager:
 
             new_system_message = {"role": "system", "content": sys_instruct}
 
-            self.chat = self.client.chats.create(
-                model=self.settings.get('model_name', 'gemini-2.5-flash'),
-                config=config,
-                history=history or []
-            )
+            if history:
+                # Filter out the OLD system message and keep the actual chat
+                clean_history = [msg for msg in history if msg['role'] != 'system']
+                self.history = [new_system_message] + clean_history
+            else:
+                self.history = [new_system_message]
+
+            self.current_model = self.settings.get('model_name', 'gemini-2.5-flash')
+            self.temperature = float(self.settings.get('temperature', 0.7))
 
             self.role_map = {
                 'user': username,

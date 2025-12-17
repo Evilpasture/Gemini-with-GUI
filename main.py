@@ -166,6 +166,7 @@ class App:
 
     def restart_chat(self):
         self.gui.reset_ui()
+        # self.chat_manager.memory = ""
         self.chat_manager.init_chat()
 
     def save_chat(self):

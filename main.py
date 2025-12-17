@@ -144,7 +144,7 @@ class App:
         except Exception as e:
             _output = _("Model list warning: %s" % e)
             print(_output)
-            # Fallback defaults
+            # Fallback defaults (this might be removed, but leaving it in for now)
             self.gui.set_available_models(["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"])
 
     @staticmethod

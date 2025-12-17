@@ -149,7 +149,7 @@ class App:
 
     @staticmethod
     def ask_api_key(parent):
-        return Dialog.ask_string(parent, _("API Key Required"), _("Enter Google GenAI API Key:"), show="*")
+        return Dialog.ask_string(parent, _("API Key Required"), _("Enter API Key:"), show="*")
 
     def process_input(self, text):
         self.chat_manager.process_input(text)

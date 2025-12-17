@@ -15,7 +15,13 @@ class ChatManager:
         self.callback = response_callback
         self.settings = settings
         self.safety = safety_settings
-        self.chat = None
+        self.formatted_safety = []
+        self.format_safety()
+        self.history = None
+        self.memory = None
+
+        self.current_model = None
+        self.temperature = None
 
         self.lock = threading.Lock()
         self.is_busy = False

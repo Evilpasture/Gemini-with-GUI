@@ -139,23 +139,42 @@ class ChatManager:
             return
 
         self.is_busy = True
+        full_response_content = ""
 
         try:
-            if not self.chat:
-                self.callback(_("Session not initialized."), "error")
-                return
+            self.history.append({"role": "user", "content": text})
 
-            stream = self.chat.send_message_stream(text)
+            stream = self.client.chat.completions.create(
+                model=self.current_model,
+                messages=self._get_trimmed_history(max_messages=20),
+                temperature=self.temperature,
+                stream=True,
+                # I AM INCREDIBLY UPSET THAT THIS DOESN'T WORK.
+                # extra_body={
+                #     "google": {
+                #         "safetySettings": self.formatted_safety
+                #     }
+                # } if "gemini" in self.current_model else None,
+            )
 
             for chunk in stream:
-                if chunk.text:
-                    self.callback(chunk.text, "stream")
+                content = chunk.choices[0].delta.content
+                if content:
+                    full_response_content += content
+                    self.callback(content, "stream")
+
+            self.history.append({"role": "assistant", "content": full_response_content})
+
+            if len(self.history) > 20:
+                self.summarize_old_history()
 
             self.callback(None, "finished")
 
-        except errors.APIError as e:
+        except AuthenticationError:
+            self.callback(_("Invalid API key. Update in settings."), "error")
+        except APIError as e:
             _error_template = _("API Error: %s")
-            _output = _error_template % e.message
+            _output = _error_template % str(e)
             self.callback(_output, "error")
         except Exception as e:
             _error_template = _("Connection Error: %s")

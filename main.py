@@ -107,22 +107,16 @@ class App:
                 set_key(".env", "GEMINI_API_KEY", self.api_key)
                 break
 
+            except AuthenticationError:
+                print(_("Invalid API Key"))
+                self.api_key = None
             except APIError as e:
-                error_message = str(e)
-                if "API_KEY_INVALID" in error_message:
-                    print(_("Invalid API Key"))
-                    self.api_key = None
-                else:
-                    _output = _("API Error: %s") % {error_message}
-                    print(_output)
-                    sys.exit(1)
+                print(_("API Service Error: %s") % str(e))
+                sys.exit(1)
             except Exception as e:
-                _error_template = _("Failed to connect to Gemini. Check your internet connections: %s")
-                _output = _(f"{_error_template}\n{e}")
-                messagebox.showerror(
-                    _("Initialization Error"),
-                    _output
-                )
+                _error_template = _("Failed to connect. Check your internet connection: %s")
+                _output = _error_template % str(e)
+                messagebox.showerror(_("Error"), _output)
                 sys.exit(1)
 
         self.populate_models()

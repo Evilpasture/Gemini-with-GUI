@@ -49,10 +49,14 @@ class ChatManager:
         try:
             username = self.settings.get('user_name', 'User')
             chatbot_name = self.settings.get('chatbot_name', 'Gemini')
+            # MEMORY!!! I should have implemented this a while ago
+            # This injects directly into the instructions.
+            memory_block = f"\nRELEVANT MEMORY: {self.memory}" if self.memory else ""
+
             # Explicitly instruct model to use Markdown just in case
             sys_instruct = (
                 f"{self.settings.get('instruction', '')}\n"
-                f"You are talking to {username}. "
+                f"You are talking to {username}. {memory_block}\n"
                 "Format responses in Markdown. "
                 f"User is using \"{self.settings.get('language', 'en')}\" "
                 "in their configurations for added context, but otherwise, "

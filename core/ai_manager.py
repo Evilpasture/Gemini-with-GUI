@@ -36,9 +36,14 @@ class ChatManager:
             current_history = getattr(self, "history", None)
             self.settings = new_settings
             self.safety = new_safety
-            self.init_chat(history)
             self.format_safety()
             self.init_chat(history=current_history)
+
+    def format_safety(self):
+        self.formatted_safety = [
+            {"category": f"HARM_CATEGORY_{cat}", "threshold": thresh}
+            for cat, thresh in self.safety.items()
+        ]
 
     def init_chat(self, history=None):
         try:

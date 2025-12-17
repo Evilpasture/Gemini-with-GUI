@@ -31,18 +31,14 @@ class ChatManager:
         self.init_chat()
 
     def update_settings(self, new_settings, new_safety):
-        """Preserve history when settings change so that the bot doesn't treat you like a stranger"""
+        """Preserve history when settings change by updating the local list."""
         with self.lock:
-            history = []
-            if self.chat:
-                try:
-                    history = self.chat.get_history()
-                except errors.APIError as e:
-                    print(f"History failed to load. {e}")
-
+            current_history = getattr(self, "history", None)
             self.settings = new_settings
             self.safety = new_safety
             self.init_chat(history)
+            self.format_safety()
+            self.init_chat(history=current_history)
 
     def init_chat(self, history=None):
         try:

@@ -282,12 +282,11 @@ class MainWindow:
     def render_history(self, history):
         self.reset_ui()
         for item in history:
-            role = "user" if item.role == "user" else "ai"
+            role = "user" if item.get("role") == "user" else "ai"
             name = self.settings['user_name'] if role == "user" else self.settings['chatbot_name']
-            # Safety check if parts exist
-            txt = ""
-            if hasattr(item, 'parts') and item.parts:
-                txt = item.parts[0].text
+            txt = item.get("content", "")
+            if item.get("role") == "system":
+                continue
 
             self.chat_display.append_message(role, name, txt)
 

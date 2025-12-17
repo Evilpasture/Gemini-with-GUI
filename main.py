@@ -97,7 +97,10 @@ class App:
                 if not self.api_key:
                     sys.exit(0)
             try:
-                self.client = genai.Client(api_key=self.api_key)
+                self.client = OpenAI(
+                    api_key=self.api_key,
+                    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+                )
                 self.client.models.list()
 
                 # Overwrite .env file. It's fine because this program only needs the API key.

@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 import threading
 import json
 import os # for error handling
-from google.genai import types, errors
+from openai import APIError, AuthenticationError
 
 
 class ChatManager:

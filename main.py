@@ -103,9 +103,8 @@ class App:
                 )
                 self.client.models.list()
 
-                # Overwrite .env file. It's fine because this program only needs the API key.
-                with open(".env", "w") as f:
-                    f.write(f"\nGEMINI_API_KEY=\"{self.api_key}\"\n")
+                # Update .env without wiping other variables - just for the future
+                set_key(".env", "GEMINI_API_KEY", self.api_key)
                 break
 
             except APIError as e:

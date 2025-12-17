@@ -15,7 +15,7 @@ import sys
 # --- Centralized Dependency Check ---
 def check_dependencies():
     required = {
-        'google.genai': 'google-genai',
+        'openai': 'openai',
         'dotenv': 'python-dotenv',
         'ttkthemes': 'ttkthemes'
     }

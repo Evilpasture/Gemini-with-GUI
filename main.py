@@ -41,10 +41,9 @@ def check_dependencies():
 check_dependencies()
 
 # Imports after check
-from dotenv import load_dotenv
-from google import genai
+from dotenv import load_dotenv, set_key
+from openai import OpenAI, AuthenticationError, APIError
 from ttkthemes import ThemedTk
-from google.genai.errors import APIError
 
 # --- Internal Module Setup ---
 SCRIPT_DIR = Path(getattr(sys, 'frozen', False) and sys.executable or __file__).resolve().parent

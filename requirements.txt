@@ -1,4 +1,4 @@
-google-genai
+openai
 python-dotenv
 ttkthemes
 babel

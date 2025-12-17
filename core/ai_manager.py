@@ -185,6 +185,14 @@ class ChatManager:
             if self.lock.locked():
                 self.lock.release()
 
+    def _get_trimmed_history(self, max_messages=15):
+        if len(self.history) <= max_messages:
+            return self.history
+        system_msg = self.history[0]
+        recent_context = self.history[-(max_messages - 1):]
+
+        return [system_msg] + recent_context
+
     @staticmethod
     def _consolidate_history(raw_history):
         """

@@ -1,6 +1,5 @@
 import os
 import configparser
-from google.genai import types
 
 CONFIG_FILE = "config.ini"
 

@@ -3,20 +3,6 @@ import configparser
 
 CONFIG_FILE = "config.ini"
 
-# Removed "Debug Settings" for markup languages during development
-# Chatbots should default to Markdown. Supporting ReST/AsciiDoc
-# in a chat window introduces too many parsing edge cases.
-# It was a difficult decision that destroy my brain capacity.
-
-
-# Mapping string values from config.ini to Google GenAI types
-THRESHOLD_MAP = {
-    "BLOCK_NONE": types.HarmBlockThreshold.BLOCK_NONE,
-    "BLOCK_ONLY_HIGH": types.HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    "BLOCK_MEDIUM_AND_ABOVE": types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    "BLOCK_LOW_AND_ABOVE": types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-}
-
 # Default values if config.ini doesn't exist
 DEFAULT_CONFIG = {
     'SETTINGS': {

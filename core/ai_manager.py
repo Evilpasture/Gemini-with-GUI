@@ -68,11 +68,7 @@ class ChatManager:
                 "reply with the same language as the prompt just normally."
             )
 
-            config = types.GenerateContentConfig(
-                system_instruction=sys_instruct,
-                temperature=float(self.settings.get('temperature', 0.7)),
-                safety_settings=self.safety
-            )
+            new_system_message = {"role": "system", "content": sys_instruct}
 
             self.chat = self.client.chats.create(
                 model=self.settings.get('model_name', 'gemini-2.5-flash'),
@@ -82,7 +78,7 @@ class ChatManager:
 
             self.role_map = {
                 'user': username,
-                'model': chatbot_name
+                'assistant': chatbot_name
             }
         except Exception as e:
             _error_template = _("System Error: Failed to init model. %s")

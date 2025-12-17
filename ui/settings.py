@@ -47,7 +47,7 @@ class PreferencesWindow(tk.Toplevel):
         # Safety Settings
         # We loop through the keys defined in config.py
         safe_sect = self.config['SAFETY']
-        for key in ['HARASSMENT', 'HATE_SPEECH', 'DANGEROUS', 'SEXUAL', 'CIVIC']:
+        for key in ['HARASSMENT', 'HATE_SPEECH', 'DANGEROUS', 'SEXUAL']:
             # Default to BLOCK_MEDIUM if key missing
             val = safe_sect.get(key, "BLOCK_MEDIUM_AND_ABOVE")
             self.safety_vars[key] = tk.StringVar(value=val)

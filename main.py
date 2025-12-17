@@ -133,11 +133,11 @@ class App:
         # Fetch models dynamically, but it wouldn't screw up the entire program
         try:
             dynamic_models = []
-            # Note: Page size config might vary by SDK version, simplified listing:
             for m in self.client.models.list():
-                # Filter for Gemini models that support generation
-                if "gemini" in m.name and "generateContent" in m.supported_actions:
-                    dynamic_models.append(m.name.split('/')[-1])
+                if ("gemini" in m.id) and ("embedding" not in m.id):
+                    clean_id = m.id.split('/')[-1]
+                    if clean_id not in dynamic_models:
+                        dynamic_models.append(clean_id)
 
             # Pass models to GUI for the settings dropdown
             self.gui.set_available_models(dynamic_models)

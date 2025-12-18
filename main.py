@@ -93,7 +93,7 @@ class App:
         self.gui = MainWindow(self.root, self, self.settings)
 
         # 2. Check API Key - 3. Init Client & Fetch Models
-        while True:
+        while not self.validated:
             if not self.api_key:
                 self.api_key = self.ask_api_key(self.root)
                 if not self.api_key:
@@ -107,7 +107,8 @@ class App:
 
                 # Update .env without wiping other variables - just for the future
                 set_key(".env", "GEMINI_API_KEY", self.api_key)
-                break
+                print(_("Authentication Successful"))
+                self.validated = True
 
             except AuthenticationError:
                 print(_("Invalid API Key"))

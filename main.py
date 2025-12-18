@@ -110,12 +110,9 @@ class App:
                 print(_("Authentication Successful"))
                 self.validated = True
 
-            except AuthenticationError:
-                print(_("Invalid API Key"))
+            except (AuthenticationError, APIError):
+                self.error_msg = (_("Invalid API Key"))
                 self.api_key = None
-            except APIError as e:
-                print(_("API Service Error: %s") % str(e))
-                sys.exit(1)
             except Exception as e:
                 _error_template = _("Failed to connect. Check your internet connection: %s")
                 _output = _error_template % str(e)

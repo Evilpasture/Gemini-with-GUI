@@ -2,6 +2,9 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     def _(s: str) -> str: ...
+else:
+    import builtins
+    _ = getattr(builtins, "_", lambda s: s)
 
 
 import tkinter as tk

@@ -147,9 +147,14 @@ class App:
             # Fallback defaults (this might be removed, but leaving it in for now)
             self.gui.set_available_models(["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"])
 
-    @staticmethod
-    def ask_api_key(parent):
-        return Dialog.ask_string(parent, _("API Key Required"), _("Enter API Key:"), show="*")
+    def ask_api_key(self, parent):
+        return Dialog.ask_string(
+            parent,
+            _("API Key Required"),
+            _("Enter API Key:"),
+            extra=self.error_msg if self.error_msg else "",
+            show="*"
+        )
 
     def process_input(self, text):
         self.chat_manager.process_input(text)

@@ -9,7 +9,6 @@ import os # for error handling
 from openai import APIError, AuthenticationError
 
 
-
 class ChatManager:
     def __init__(self, client, response_callback, settings, safety_settings):
         self.client = client

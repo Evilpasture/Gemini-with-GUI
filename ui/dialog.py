@@ -59,8 +59,12 @@ class Dialog(tk.Toplevel):
         else:
             messagebox.showwarning(_("Required"), _("Input cannot be empty."))
 
-    @staticmethod
-    def ask_string(parent, title, prompt, show=None):
-        d = Dialog(parent, title, prompt, show)
+    def close(self):
+        self.grab_release()
+        self.destroy()
+
+    @classmethod
+    def ask_string(cls, parent, title, prompt, **kwargs) -> str | None:
+        d = cls(parent, title, prompt, **kwargs)
         parent.wait_window(d)
         return d.result

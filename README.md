@@ -26,6 +26,10 @@ A lightweight, desktop-based chat interface for Google's Gemini models built wit
 
 - System instructions and persona
 
+- Internationalization and Vietnamese support
+
+- Uses OpenAI SDK to make request to Google instead
+
 ## Setup
 
 ### Get your API key

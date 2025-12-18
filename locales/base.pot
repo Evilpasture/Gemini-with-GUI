@@ -1,0 +1,290 @@
+# Translations template for PROJECT.
+# Copyright (C) 2025 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2025-12-18 16:16+0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: main.py:30
+#, python-format
+msgid "CRITICAL: Missing libraries: %s"
+msgstr ""
+
+#: main.py:34
+#, python-format
+msgid "Run: pip install %s"
+msgstr ""
+
+#: main.py:69
+#, python-format
+msgid "Application files missing. Trace: %s"
+msgstr ""
+
+#: main.py:71
+msgid "Internal Error"
+msgstr ""
+
+#: main.py:110
+msgid "Authentication Successful"
+msgstr ""
+
+#: main.py:114
+msgid "Invalid API Key"
+msgstr ""
+
+#: main.py:117
+#, python-format
+msgid "Failed to connect. Check your internet connection: %s"
+msgstr ""
+
+#: main.py:119 ui/main_window.py:242
+msgid "Error"
+msgstr ""
+
+#: main.py:145
+#, python-format
+msgid "Model list warning: %s"
+msgstr ""
+
+#: main.py:153
+msgid "API Key Required"
+msgstr ""
+
+#: main.py:154
+msgid "Enter API Key:"
+msgstr ""
+
+#: main.py:200
+msgid "Save?"
+msgstr ""
+
+#: main.py:200
+msgid "Save chat history before closing?"
+msgstr ""
+
+#: core/ai_manager.py:88
+#, python-format
+msgid "System Error: Failed to init model. %s"
+msgstr ""
+
+#: core/ai_manager.py:121
+#, python-format
+msgid "Memory Compression Failed: %s"
+msgstr ""
+
+#: core/ai_manager.py:130
+msgid "Please wait for the current message to finish."
+msgstr ""
+
+#: core/ai_manager.py:174
+msgid "Invalid API key. Update in settings."
+msgstr ""
+
+#: core/ai_manager.py:176
+#, python-format
+msgid "API Error: %s"
+msgstr ""
+
+#: core/ai_manager.py:180
+#, python-format
+msgid "Connection Error: %s"
+msgstr ""
+
+#: core/ai_manager.py:224
+msgid "Cannot save while generating response."
+msgstr ""
+
+#: core/ai_manager.py:228
+msgid "No chat to save."
+msgstr ""
+
+#: core/ai_manager.py:249
+#, python-format
+msgid "Saved session to %s"
+msgstr ""
+
+#: core/ai_manager.py:251
+#, python-format
+msgid "Save failed: %s"
+msgstr ""
+
+#: core/ai_manager.py:255
+msgid "Cannot load while generating."
+msgstr ""
+
+#: core/ai_manager.py:279
+msgid "Loaded successfully"
+msgstr ""
+
+#: core/ai_manager.py:282
+#, python-format
+msgid "Load failed: %s"
+msgstr ""
+
+#: ui/dialog.py:47
+msgid "OK"
+msgstr ""
+
+#: ui/dialog.py:60
+msgid "Required"
+msgstr ""
+
+#: ui/dialog.py:60
+msgid "Input cannot be empty."
+msgstr ""
+
+#: ui/main_window.py:15
+msgid "Missing chat_text.py. Falling back to standard tk.Text with adapter."
+msgstr ""
+
+#: ui/main_window.py:72
+#, python-format
+msgid "Failed to load theme: %s"
+msgstr ""
+
+#: ui/main_window.py:86
+msgid "New Chat"
+msgstr ""
+
+#: ui/main_window.py:87
+msgid "Save Chat..."
+msgstr ""
+
+#: ui/main_window.py:88
+msgid "Load Chat..."
+msgstr ""
+
+#: ui/main_window.py:90
+msgid "Exit"
+msgstr ""
+
+#: ui/main_window.py:91
+msgid "File"
+msgstr ""
+
+#: ui/main_window.py:94 ui/settings.py:32
+msgid "Settings"
+msgstr ""
+
+#: ui/main_window.py:95
+msgid "Tools"
+msgstr ""
+
+#: ui/main_window.py:139 ui/main_window.py:232
+msgid "Ready"
+msgstr ""
+
+#: ui/main_window.py:181
+#, python-format
+msgid "Something bad happened when updating themes in settings. %s"
+msgstr ""
+
+#: ui/main_window.py:185
+#, python-format
+msgid "Chat - %s"
+msgstr ""
+
+#: ui/main_window.py:200
+msgid "Thinking..."
+msgstr ""
+
+#: ui/main_window.py:236
+#, python-format
+msgid "Error: %s"
+msgstr ""
+
+#: ui/main_window.py:271
+msgid "Session Reset."
+msgstr ""
+
+#: ui/main_window.py:276
+#, python-format
+msgid "System: %s"
+msgstr ""
+
+#: ui/settings.py:11
+msgid "Harassment:"
+msgstr ""
+
+#: ui/settings.py:12
+msgid "Hate Speech:"
+msgstr ""
+
+#: ui/settings.py:13
+msgid "Dangerous:"
+msgstr ""
+
+#: ui/settings.py:14
+msgid "Sexual:"
+msgstr ""
+
+#: ui/settings.py:69
+msgid "AI Parameters"
+msgstr ""
+
+#: ui/settings.py:70
+msgid "Safety Filters"
+msgstr ""
+
+#: ui/settings.py:71
+msgid "Appearance"
+msgstr ""
+
+#: ui/settings.py:82
+msgid "Language:"
+msgstr ""
+
+#: ui/settings.py:84
+msgid "(Requires Restart)"
+msgstr ""
+
+#: ui/settings.py:87
+msgid "Model:"
+msgstr ""
+
+#: ui/settings.py:89
+msgid "Creativity (Temp):"
+msgstr ""
+
+#: ui/settings.py:93
+msgid "Your Name:"
+msgstr ""
+
+#: ui/settings.py:94
+msgid "Bot Name:"
+msgstr ""
+
+#: ui/settings.py:96
+msgid "Instructions:"
+msgstr ""
+
+#: ui/settings.py:111
+msgid ""
+"Note: 'Block None' may result in unfiltered or unstable content. Make "
+"sure the filters are appropriate for your intended work."
+msgstr ""
+
+#: ui/settings.py:118
+msgid "Font Size:"
+msgstr ""
+
+#: ui/settings.py:125
+msgid "Save & Apply"
+msgstr ""
+
+#: ui/settings.py:126
+msgid "Cancel"
+msgstr ""
+

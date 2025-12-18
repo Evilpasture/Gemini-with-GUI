@@ -1,16 +1,21 @@
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    def _(s: str) -> str: ...
+
+
 import tkinter as tk
 from tkinter import messagebox
 from pathlib import Path
 import os
 import sys
 
-from google.genai.errors import APIError
 
 
 # --- Centralized Dependency Check ---
 def check_dependencies():
     required = {
-        'google.genai': 'google-genai',
+        'openai': 'openai',
         'dotenv': 'python-dotenv',
         'ttkthemes': 'ttkthemes'
     }
@@ -22,17 +27,22 @@ def check_dependencies():
             missing.append(pip_name)
 
     if missing:
-        # We can't use tk.messagebox easily before root, but simple print/sys.exit is safer here
-        print(f"CRITICAL: Missing libraries: {', '.join(missing)}")
-        print(f"Run: pip install {' '.join(missing)}")
+        warning_template = _("CRITICAL: Missing libraries: %s")
+        missing_list_formatted = ', '.join(missing)
+        print(warning_template % missing_list_formatted)
+
+        run_template = _("Run: pip install %s")
+        install_command = ' '.join(missing)
+        print(run_template % install_command)
+
         sys.exit(1)
 
 
 check_dependencies()
 
 # Imports after check
-from dotenv import load_dotenv
-from google import genai
+from dotenv import load_dotenv, set_key
+from openai import OpenAI, AuthenticationError, APIError
 from ttkthemes import ThemedTk
 
 # --- Internal Module Setup ---
@@ -43,14 +53,22 @@ if str(SCRIPT_DIR) not in sys.path:
 # Consolidated imports to catch structural errors early
 try:
     from core.config import ConfigManager
+
+    config_manager = ConfigManager()
+    settings = config_manager.get_settings()
+
+    from core.i18n import setup_i18n
+    setup_i18n(settings['language'])
+
     from core.ai_manager import ChatManager
     from ui.main_window import MainWindow
     from ui.dialog import Dialog
 except ImportError as e:
-    # Minimal TK root just to show error
     r = tk.Tk()
     r.withdraw()
-    messagebox.showerror("Internal Error", f"Application files missing.\nTrace: {e}")
+    _error_template = _("Application files missing. Trace: %s")
+    _output = f"{_error_template % e}\n{e}"
+    messagebox.showerror(_("Internal Error"), _output)
     sys.exit(1)
 
 load_dotenv()
@@ -68,38 +86,37 @@ class App:
         self.safety = self.config_manager.get_safety_settings()
 
         self.api_key = os.getenv("GEMINI_API_KEY")
+        self.validated = False
+        self.error_msg = ""
 
         # 1. Setup GUI (Pass empty model list first, populate later)
         self.gui = MainWindow(self.root, self, self.settings)
 
         # 2. Check API Key - 3. Init Client & Fetch Models
-        while True:
+        while not self.validated:
             if not self.api_key:
                 self.api_key = self.ask_api_key(self.root)
                 if not self.api_key:
                     sys.exit(0)
             try:
-                self.client = genai.Client(api_key=self.api_key)
+                self.client = OpenAI(
+                    api_key=self.api_key,
+                    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+                )
                 self.client.models.list()
 
-                # Save to env for next time
-                with open(".env", "w") as f:
-                    f.write(f"\nGEMINI_API_KEY=\"{self.api_key}\"\n")
-                break
+                # Update .env without wiping other variables - just for the future
+                set_key(".env", "GEMINI_API_KEY", self.api_key)
+                print(_("Authentication Successful"))
+                self.validated = True
 
-            except APIError as e:
-                error_message = str(e)
-                if "API_KEY_INVALID" in error_message:
-                    print("Invalid API Key")
-                    self.api_key = None
-                else:
-                    print(f"API Error: {error_message}")
-                    sys.exit(1)
+            except (AuthenticationError, APIError):
+                self.error_msg = (_("Invalid API Key"))
+                self.api_key = None
             except Exception as e:
-                messagebox.showerror(
-                    "Initialization Error",
-                    f"Failed to connect to Gemini. Check your internet connections:\n{e}"
-                )
+                _error_template = _("Failed to connect. Check your internet connection: %s")
+                _output = _error_template % str(e)
+                messagebox.showerror(_("Error"), _output)
                 sys.exit(1)
 
         self.populate_models()
@@ -116,22 +133,28 @@ class App:
         # Fetch models dynamically, but it wouldn't screw up the entire program
         try:
             dynamic_models = []
-            # Note: Page size config might vary by SDK version, simplified listing:
             for m in self.client.models.list():
-                # Filter for Gemini models that support generation
-                if "gemini" in m.name and "generateContent" in m.supported_actions:
-                    dynamic_models.append(m.name.split('/')[-1])
+                if ("gemini" in m.id) and ("embedding" not in m.id):
+                    clean_id = m.id.split('/')[-1]
+                    if clean_id not in dynamic_models:
+                        dynamic_models.append(clean_id)
 
             # Pass models to GUI for the settings dropdown
             self.gui.set_available_models(dynamic_models)
         except Exception as e:
-            print(f"Model list warning: {e}")
-            # Fallback defaults
+            _output = _("Model list warning: %s" % e)
+            print(_output)
+            # Fallback defaults (this might be removed, but leaving it in for now)
             self.gui.set_available_models(["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"])
 
-    @staticmethod
-    def ask_api_key(parent):
-        return Dialog.ask_string(parent, "API Key Required", "Enter Google GenAI API Key:", show="*")
+    def ask_api_key(self, parent):
+        return Dialog.ask_string(
+            parent,
+            _("API Key Required"),
+            _("Enter API Key:"),
+            extra=self.error_msg if self.error_msg else "",
+            show="*"
+        )
 
     def process_input(self, text):
         self.chat_manager.process_input(text)
@@ -148,6 +171,7 @@ class App:
 
     def restart_chat(self):
         self.gui.reset_ui()
+        # self.chat_manager.memory = ""
         self.chat_manager.init_chat()
 
     def save_chat(self):
@@ -173,7 +197,7 @@ class App:
 
     def on_closing(self):
         if self.gui.is_dirty():
-            confirm = messagebox.askyesnocancel("Save?", "Save chat history before closing?")
+            confirm = messagebox.askyesnocancel(_("Save?"), _("Save chat history before closing?"))
             if confirm:
                 self.save_chat()
             elif confirm is None:
@@ -184,11 +208,12 @@ class App:
 
 if __name__ == "__main__":
     # high DPI awareness, just because.
-    try:
-        from ctypes import windll
-        windll.shcore.SetProcessDpiAwareness(1)
-    except: # If you're using non-Windows...
-        pass
+    if sys.platform.startswith("win"):
+        try:
+            from ctypes import windll
+            windll.shcore.SetProcessDpiAwareness(1)
+        except (ImportError, AttributeError): # If you're using non-Windows...
+            pass
 
     root = ThemedTk(theme="arc")
     app = App(root)

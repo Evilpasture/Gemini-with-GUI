@@ -1,12 +1,54 @@
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    def _(s: str) -> str: ...
+
+
 import tkinter as tk
 from tkinter import ttk
 import time
+
 try:
     from util.chat_text import ChatTextWidget
-    CHAT_TEXT = True
+    HasCustomWidget = True
 except ImportError:
-    print("Missing chat_text.py. Falling back to regular tk.Text")
-    CHAT_TEXT = False
+    print(_("Missing chat_text.py. Falling back to standard tk.Text with adapter."))
+    HasCustomWidget = False
+
+
+class StandardTextAdapter(tk.Text):
+    """
+    A wrapper around tk.Text to provide compatibility methods
+    if ChatTextWidget is missing. Prevents AttributeErrors.
+    """
+
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+        self.configure(font=("Segoe UI", 10))  # Default font
+
+    def set_font_size(self, size):
+        current_font = self.cget("font")
+        # specific implementation depends on how you defined font originally,
+        # this is a basic safe fallback
+        self.configure(font=(current_font, size))
+
+    def append_message(self, role, name, text):
+        self.configure(state="normal")
+        self.insert("end", f"\n[{name}]: {text}\n")
+        self.configure(state="disabled")
+        self.see("end")
+
+    def append_chunk(self, text):
+        self.configure(state="normal")
+        self.insert("end", text)
+        self.configure(state="disabled")
+        self.see("end")
+
+    def finalize_formatting(self):
+        # No specific formatting in plain text mode
+        pass
+
+
 from .settings import PreferencesWindow
 
 
@@ -17,14 +59,18 @@ class MainWindow:
         self.settings = settings
         self.available_models = []
 
+        # Stop watch state
+        self.start_time = 0
+        self.timer_running = False
+
         self.root.geometry("800x650")
         self.update_title()
 
-        # REFACTOR: Theme handling centralized
         try:
             self.root.set_theme(settings['theme'])
-        except:
-            pass
+        except Exception as e:
+            _output = _("Failed to load theme: %s") % e
+            print(_output)
 
         self._build_menu()
         self._build_layout()
@@ -37,16 +83,16 @@ class MainWindow:
         menubar = tk.Menu(self.root)
 
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="New Chat", command=self.controller.restart_chat)
-        file_menu.add_command(label="Save Chat...", command=self.controller.save_chat)
-        file_menu.add_command(label="Load Chat...", command=self.controller.load_chat)
+        file_menu.add_command(label=_("New Chat"), command=self.controller.restart_chat)
+        file_menu.add_command(label=_("Save Chat..."), command=self._on_save)
+        file_menu.add_command(label=_("Load Chat..."), command=self._on_load)
         file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=self.controller.on_closing)
-        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label=_("Exit"), command=self.controller.on_closing)
+        menubar.add_cascade(label=_("File"), menu=file_menu)
 
         tools_menu = tk.Menu(menubar, tearoff=0)
-        tools_menu.add_command(label="Settings", command=self.show_settings)
-        menubar.add_cascade(label="Tools", menu=tools_menu)
+        tools_menu.add_command(label=_("Settings"), command=self.show_settings)
+        menubar.add_cascade(label=_("Tools"), menu=tools_menu)
 
         self.root.config(menu=menubar)
 
@@ -62,10 +108,13 @@ class MainWindow:
         scrollbar.pack(side="right", fill="y")
 
         # Use the unified widget, or fallback to default tk.Text
-        if CHAT_TEXT:
+        if HasCustomWidget:
             self.chat_display = ChatTextWidget(chat_frame, yscrollcommand=scrollbar.set, wrap="word", relief="flat")
         else:
-            self.chat_display = tk.Text(chat_frame, yscrollcommand=scrollbar.set, wrap="word", relief="flat")
+            # Use the adapter instead of raw tk.Text
+            self.chat_display = StandardTextAdapter(chat_frame, yscrollcommand=scrollbar.set, wrap="word",
+                                                    relief="flat")
+
         self.chat_display.pack(side="left", fill="both", expand=True)
         scrollbar.config(command=self.chat_display.yview)
 
@@ -83,18 +132,39 @@ class MainWindow:
         self.send_btn = ttk.Button(input_frame, text="Send", command=self.send_message)
         self.send_btn.pack(side="right")
 
-        # --- STATUS BAR (Modified for Stopwatch) ---
+        # --- STATUS BAR ---
         status_frame = ttk.Frame(main_frame)
         status_frame.pack(side="bottom", fill="x", pady=(5, 0))
 
-        self.status_lbl = ttk.Label(status_frame, text="Ready", foreground="gray")
+        self.status_lbl = ttk.Label(status_frame, text=_("Ready"), foreground="gray")
         self.status_lbl.pack(side="left")
 
         self.time_lbl = ttk.Label(status_frame, text="", foreground="#0056b3")  # Blue timer
         self.time_lbl.pack(side="right")
 
+    def _on_save(self):
+        self.controller.save_chat()
+        self._mark_clean()
+
+    def _on_load(self):
+        self.controller.load_chat()
+        self._mark_clean()
+
     def _on_text_modified(self, event=None):
-        self.is_text_dirty = True
+        """Called automatically by Tkinter when text changes."""
+        # Only mark dirty if the widget explicitly says it's modified.
+        # This prevents the loop where resetting the flag triggers this event again.
+        if self.chat_display.edit_modified():
+            if not self.is_text_dirty:
+                self.is_text_dirty = True
+
+        # Optional: Update window title to show asterisk (*)
+        # Probably will add, some time later
+        # self.root.title(self.root.title() + " *")
+
+    def _mark_clean(self):
+        """Helper to reset the dirty state."""
+        self.is_text_dirty = False
         self.chat_display.edit_modified(False)
 
     def is_dirty(self):
@@ -108,10 +178,13 @@ class MainWindow:
             if ttk.Style().theme_use() != settings['theme']:
                 self.root.set_theme(settings['theme'])
         except Exception as e:
-            print(f"Something bad happened when updating themes in settings. {e}")
+            _output = _("Something bad happened when updating themes in settings. %s") % e
+            print(_output)
 
     def update_title(self):
-        self.root.title(f"Gemini Chat - {self.settings['model_name']}")
+        translated_prefix = _("Chat - %s")
+        title = translated_prefix % self.settings['chatbot_name']
+        self.root.title(title)
 
     def show_settings(self):
         PreferencesWindow(self.root, self.controller.config_manager, self.controller.reload_settings,
@@ -124,7 +197,7 @@ class MainWindow:
         self.input_entry.delete(0, tk.END)
         self.input_entry.config(state="disabled")
         self.send_btn.config(state="disabled")
-        self.status_lbl.config(text="Thinking...")
+        self.status_lbl.config(text=_("Thinking..."))
 
         # Display User Message
         self.chat_display.append_message("user", self.settings['user_name'], text)
@@ -140,7 +213,6 @@ class MainWindow:
 
         self.controller.process_input(text)
 
-    # REFACTOR: Callback Logic
     def on_response_received(self, text, status):
         # Schedule GUI update on main thread
         self.root.after_idle(lambda: self._handle_stream(text, status))
@@ -157,14 +229,17 @@ class MainWindow:
             self.input_entry.config(state="normal")
             self.send_btn.config(state="normal")
             self.input_entry.focus()
-            self.status_lbl.config(text="Ready")
+            self.status_lbl.config(text=_("Ready"))
         elif status == "error":
+            self._stop_stopwatch()
             self.chat_display.configure(state="normal")
-            self.chat_display.insert("end", f"\n[Error: {text}]\n", "error")
+            _error_template = _("Error: %s")
+            _output = f"\n[{_error_template % text}]\n"
+            self.chat_display.insert("end", _output, "error")
             self.chat_display.configure(state="disabled")
             self.input_entry.config(state="normal")
             self.send_btn.config(state="normal")
-            self.status_lbl.config(text="Error")
+            self.status_lbl.config(text=_("Error"))
 
     # --- STOPWATCH LOGIC ---
     def _start_stopwatch(self):
@@ -177,33 +252,44 @@ class MainWindow:
         if self.timer_running:
             elapsed = time.time() - self.start_time
             self.time_lbl.config(text=f"{elapsed:.1f}s")
-            # Update every 100ms instead of 50ms to save CPU for text rendering
             self.root.after(100, self._update_timer)
 
     def _stop_stopwatch(self):
-        self.timer_running = False
-        elapsed = time.time() - self.start_time
-        self.time_lbl.config(text=f"{elapsed:.2f}s")
+        if self.timer_running:
+            self.timer_running = False
+            elapsed = time.time() - self.start_time
+            self.time_lbl.config(text=f"{elapsed:.2f}s")
 
     def reset_ui(self):
         self.chat_display.configure(state="normal")
         self.chat_display.delete("1.0", tk.END)
         self.chat_display.configure(state="disabled")
-        self.is_text_dirty = False
-        self.append_system_msg("Session Reset.", True)
+
+        # Resetting UI counts as a modification, but usually, a "New Chat" is considered "Clean".
+        self._mark_clean()
+
+        self.append_system_msg(_("Session Reset."), True)
 
     def append_system_msg(self, text, success=True):
         tag = "system" if success else "error"
         self.chat_display.configure(state="normal")
-        self.chat_display.insert("end", f"\n[System: {text}]\n", tag)
+        _system_template = _("System: %s")
+        _output = f"\n[{_system_template % text}]\n"
+        self.chat_display.insert("end", _output, tag)
         self.chat_display.configure(state="disabled")
         self.chat_display.see("end")
 
     def render_history(self, history):
         self.reset_ui()
         for item in history:
-            role = "user" if item.role == "user" else "ai"
+            role = "user" if item.get("role") == "user" else "ai"
             name = self.settings['user_name'] if role == "user" else self.settings['chatbot_name']
-            # Safety check if parts exist
-            txt = item.parts[0].text if item.parts else ""
+            txt = item.get("content", "")
+            if item.get("role") == "system":
+                continue
+
             self.chat_display.append_message(role, name, txt)
+
+        # After loading history, the text is technically "modified" by the loop,
+        # but semantically, a loaded file is "Clean".
+        self._mark_clean()

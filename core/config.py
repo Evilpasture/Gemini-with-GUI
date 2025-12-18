@@ -1,22 +1,7 @@
 import os
 import configparser
-from google.genai import types
 
 CONFIG_FILE = "config.ini"
-
-# Removed "Debug Settings" for markup languages during development
-# Chatbots should default to Markdown. Supporting ReST/AsciiDoc
-# in a chat window introduces too many parsing edge cases.
-# It was a difficult decision that destroy my brain capacity.
-
-
-# Mapping string values from config.ini to Google GenAI types
-THRESHOLD_MAP = {
-    "BLOCK_NONE": types.HarmBlockThreshold.BLOCK_NONE,
-    "BLOCK_ONLY_HIGH": types.HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    "BLOCK_MEDIUM_AND_ABOVE": types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    "BLOCK_LOW_AND_ABOVE": types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-}
 
 # Default values if config.ini doesn't exist
 DEFAULT_CONFIG = {
@@ -27,14 +12,14 @@ DEFAULT_CONFIG = {
         'INSTRUCTION': 'You are a helpful AI assistant.',
         'FONT_SIZE': '11',
         'TEMPERATURE': '0.7',
-        'THEME': 'arc'  # Default visual theme
+        'THEME': 'arc',  # Default visual theme
+        'LANGUAGE': 'en',
     },
     'SAFETY': {
         'HARASSMENT': 'BLOCK_MEDIUM_AND_ABOVE',
         'HATE_SPEECH': 'BLOCK_MEDIUM_AND_ABOVE',
         'DANGEROUS': 'BLOCK_MEDIUM_AND_ABOVE',
         'SEXUAL': 'BLOCK_MEDIUM_AND_ABOVE',
-        'CIVIC': 'BLOCK_MEDIUM_AND_ABOVE',
     }
 }
 
@@ -54,47 +39,20 @@ class ConfigManager:
 
     def get_settings(self):
         """Returns the dictionary from config file."""
-        # Integer conversion
-        # It's a headache to make things robust when one of which is just as simple as this.
-        try:
-            f_size = self.parser.getint('SETTINGS', 'FONT_SIZE')
-        except:
-            f_size = 11
-
         return {
             'model_name': self.parser.get('SETTINGS', 'MODEL_NAME', fallback='gemini-2.5-flash'),
             'user_name': self.parser.get('SETTINGS', 'USER_NAME', fallback='User'),
             'chatbot_name': self.parser.get('SETTINGS', 'CHATBOT_NAME', fallback='Gemini'),
             'instruction': self.parser.get('SETTINGS', 'INSTRUCTION', fallback=''),
-            'font_size': f_size,
+            'font_size': self.parser.getint('SETTINGS', 'FONT_SIZE', fallback=11),
             'temperature': self.parser.getfloat('SETTINGS', 'TEMPERATURE', fallback=0.7),
-            'theme': self.parser.get('SETTINGS', 'THEME', fallback='arc')
+            'theme': self.parser.get('SETTINGS', 'THEME', fallback='arc'),
+            'language': self.parser.get('SETTINGS', 'LANGUAGE', fallback='en'),
         }
 
     def get_safety_settings(self):
-        s = self.parser['SAFETY']
-        return [
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                threshold=THRESHOLD_MAP.get(s.get('HARASSMENT'), types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE)
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                threshold=THRESHOLD_MAP.get(s.get('HATE_SPEECH'), types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE)
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold=THRESHOLD_MAP.get(s.get('DANGEROUS'), types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE)
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                threshold=THRESHOLD_MAP.get(s.get('SEXUAL'), types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE)
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY,
-                threshold=THRESHOLD_MAP.get(s.get('CIVIC'), types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE)
-            ),
-        ]
+        """Returns just the string values, no Google-specific types."""
+        return {k.lower(): self.parser.get('SAFETY', k.lower()) for k in DEFAULT_CONFIG['SAFETY']}
 
     def get_parser(self):
         """Returns the raw parser object (needed for the Preferences Window)."""

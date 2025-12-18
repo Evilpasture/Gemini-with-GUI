@@ -86,6 +86,8 @@ class App:
         self.safety = self.config_manager.get_safety_settings()
 
         self.api_key = os.getenv("GEMINI_API_KEY")
+        self.validated = False
+        self.error_msg = ""
 
         # 1. Setup GUI (Pass empty model list first, populate later)
         self.gui = MainWindow(self.root, self, self.settings)

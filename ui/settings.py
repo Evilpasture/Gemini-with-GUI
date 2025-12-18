@@ -7,7 +7,13 @@ if TYPE_CHECKING:
 import tkinter as tk
 from tkinter import ttk
 
-# Options available in Google GenAI
+_BABEL_HINTS = [
+    _("Harassment:"),
+    _("Hate Speech:"),
+    _("Dangerous:"),
+    _("Sexual:"),
+]
+
 SAFETY_OPTIONS = [
     "BLOCK_NONE",
     "BLOCK_ONLY_HIGH",
@@ -96,7 +102,7 @@ class PreferencesWindow(tk.Toplevel):
         # Generate dropdowns dynamically
         row_idx = 0
         for key, var in self.safety_vars.items():
-            label_text = key.replace("_", " ").title() + ":"
+            label_text = _(key.replace("_", " ").title() + ":")
             cb = ttk.Combobox(f_safe, textvariable=var, values=SAFETY_OPTIONS, state="readonly")
             self._grid_opt(f_safe, row_idx, label_text, cb)
             row_idx += 1

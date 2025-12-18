@@ -12,12 +12,21 @@ from tkinter import ttk, messagebox
 
 
 class Dialog(tk.Toplevel):
-    def __init__(self, parent, title, prompt, show=None):
+    def __init__(self, parent, title, prompt, extra="", show=None):
         super().__init__(parent)
+        style = ttk.Style()
+        style.configure(
+            "Error.TLabel",
+            font=("Arial", 10),
+            foreground="red",
+        )
+
         self.title(title)
         self.result = None
 
-        self.geometry("300x150")
+        self.protocol("WM_DELETE_WINDOW", self.close)
+
+        self.geometry("")
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
@@ -30,6 +39,10 @@ class Dialog(tk.Toplevel):
         entry.pack(pady=5, padx=20, fill="x")
         entry.focus()
         entry.bind("<Return>", lambda e: self.submit())
+
+        if extra:
+            extra_label = ttk.Label(self, text=extra, style="Error.TLabel")
+            extra_label.pack(pady=5)
 
         ttk.Button(self, text=_("OK"), command=self.submit).pack(pady=10)
 
